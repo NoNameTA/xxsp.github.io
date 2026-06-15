@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compact Charging — Danh mục sản phẩm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#E8ECF2;          /* chữ sáng trên nền đen */
+    --paper:#0A0D12;        /* nền đen */
+    --card:#141922;         /* nền thẻ/khung */
+    --blue:#2E8BFF;         /* xanh biển */
+    --blue-hover:#1B79F0;
+    --blue-soft:rgba(46,139,255,.16);
+    --slate:#8A93A1;
+    --line:#242B35;
+    --line-soft:#171C25;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 8px 28px rgba(0,0,0,.35);
+    --shadow-hover:0 2px 6px rgba(0,0,0,.45),0 16px 44px rgba(46,139,255,.22);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:'Inter',system-ui,-apple-system,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 24px}
+
+  header{padding:40px 0 24px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .bolt{width:42px;height:42px;flex:none;background:var(--blue);border-radius:11px;display:grid;place-items:center;box-shadow:0 6px 20px rgba(46,139,255,.35)}
+  .bolt svg{width:22px;height:22px}
+  .brand h1{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:21px;letter-spacing:-.02em;line-height:1.1}
+  .brand .tag{font-size:12.5px;color:var(--slate);font-weight:500}
+  .lead{margin-top:26px;max-width:560px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:30px;line-height:1.18;letter-spacing:-.025em}
+  .lead em{color:var(--blue);font-style:normal}
+  .sub{margin-top:10px;color:var(--slate);font-size:15px;max-width:520px}
+
+  /* ---------- Panel nhập nguồn dữ liệu ---------- */
+  .panel{margin-top:28px;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px}
+  .panel.hidden{display:none}
+  .panel h2{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+  .panel h2 .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  .panel .hint{margin-top:7px;color:var(--slate);font-size:13.5px;line-height:1.55}
+  .panel .hint code{font-family:'Space Mono',monospace;font-size:12px;background:var(--line-soft);padding:1px 6px;border-radius:5px;color:var(--ink)}
+  .rows{margin-top:16px;display:flex;flex-direction:column;gap:9px}
+  .sheet-row{display:flex;gap:8px;align-items:center}
+  .sheet-row .idx{font-family:'Space Mono',monospace;font-size:12px;color:var(--slate);width:20px;text-align:right;flex:none}
+  .sheet-row input{flex:1;min-width:0;padding:11px 13px;border:1px solid var(--line);border-radius:10px;background:var(--paper);font-family:'Space Mono',monospace;font-size:12.5px;color:var(--ink);outline:none;transition:.15s}
+  .sheet-row input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  .sheet-row .rm{flex:none;width:34px;height:34px;border:1px solid var(--line);background:var(--paper);border-radius:9px;cursor:pointer;color:var(--slate);font-size:18px;line-height:1;display:grid;place-items:center;transition:.15s}
+  .sheet-row .rm:hover{border-color:var(--blue);color:var(--blue)}
+  .panel-actions{margin-top:16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .panel-msg{font-size:13px;color:var(--blue);font-weight:500}
+
+  .btn{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px;border-radius:10px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--ink);padding:11px 17px;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+  .btn:hover{border-color:var(--blue);color:var(--blue)}
+  .btn:active{transform:scale(.98)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  .btn:disabled:hover{border-color:var(--line);color:var(--ink)}
+  .btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn-primary:hover{background:var(--blue-hover);border-color:var(--blue-hover);color:#fff}
+  .btn:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+  .btn svg{width:16px;height:16px}
+
+  .source-bar{margin-top:22px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--slate)}
+  .source-bar.hidden{display:none}
+  .source-bar b{color:var(--ink);font-weight:600}
+  .source-bar .edit{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:9px;padding:6px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:.15s}
+  .source-bar .edit:hover{border-color:var(--blue);color:var(--blue)}
+  .source-bar .edit svg{width:14px;height:14px}
+
+  /* ---------- Thanh lọc + tải về ---------- */
+  .toolbar{margin-top:26px;display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+  .search{position:relative;flex:1;min-width:240px;max-width:460px}
+  .search svg{position:absolute;left:15px;top:50%;transform:translateY(-50%);width:18px;height:18px;stroke:var(--slate)}
+  .search input{width:100%;padding:13px 15px 13px 44px;border:1px solid var(--line);border-radius:12px;background:var(--card);font-family:inherit;font-size:15px;color:var(--ink);outline:none;transition:.15s;box-shadow:var(--shadow)}
+  .search input::placeholder{color:var(--slate)}
+  .search input:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  .toolbar .spacer{flex:1}
+
+  /* ---------- Grid ---------- */
+  .grid{margin:24px 0 60px;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(248px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow);transition:transform .18s ease,box-shadow .18s ease,border-color .18s}
+  .card:hover{transform:translateY(-3px);box-shadow:var(--shadow-hover);border-color:#2F3A48}
+  .thumb{aspect-ratio:4/3;background:var(--line-soft);display:grid;place-items:center;overflow:hidden}
+  .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+  .thumb .ph{color:#3A4452;font-size:24px}
+  .card-body{padding:16px;display:flex;flex-direction:column;gap:11px;flex:1}
+  .cats{display:flex;flex-wrap:wrap;gap:6px}
+  .cat{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.02em;color:var(--blue);background:var(--blue-soft);padding:3px 8px;border-radius:6px;white-space:nowrap}
+  .card h3{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15.5px;line-height:1.3;letter-spacing:-.01em}
+  .card a.go{margin-top:auto;display:inline-flex;align-items:center;gap:7px;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;color:var(--ink);text-decoration:none;padding-top:4px}
+  .card a.go svg{width:15px;height:15px;transition:transform .15s}
+  .card a.go:hover{color:var(--blue)}
+  .card a.go:hover svg{transform:translateX(3px)}
+  .empty{grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--slate)}
+  .empty .big{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;color:var(--ink);margin-bottom:6px}
+
+  footer{border-top:1px solid var(--line);padding:24px 0 50px;color:var(--slate);font-size:13px}
+  .demo-note{font-family:'Space Mono',monospace;font-size:11.5px;background:rgba(229,197,114,.08);border:1px solid rgba(229,197,114,.25);color:#E5C572;border-radius:9px;padding:10px 13px;margin-bottom:16px}
+  .demo-note.hidden{display:none}
+
+  @media (max-width:560px){.lead{font-size:25px}header{padding:30px 0 22px}.panel{padding:18px}.search{max-width:none}}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <!-- KHU NHẬP NGUỒN DỮ LIỆU -->
+    <section class="panel" id="panel" aria-label="Nguồn dữ liệu">
+      <div class="rows" id="rows"></div>
+      <div class="panel-actions">
+        <button class="btn" id="addRow" type="button">+ Thêm bảng Sheet</button>
+        <button class="btn btn-primary" id="loadBtn" type="button">Tải dữ liệu</button>
+        <span class="panel-msg" id="panelMsg"></span>
+      </div>
+    </section>
+
+    <div class="source-bar hidden" id="sourceBar">
+      <span>Nguồn dữ liệu: <b id="srcCount"></b></span>
+      <button class="edit" id="editBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        Đổi nguồn
+      </button>
+    </div>
+
+    <!-- THANH LỌC + TẢI VỀ -->
+    <div class="toolbar">
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="search" type="search" placeholder="Gõ tên sản phẩm hoặc danh mục để lọc…" aria-label="Lọc sản phẩm">
+      </label>
+      <span class="spacer"></span>
+      <button class="btn btn-primary" id="exportBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg>
+        Tải về (.csv)
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="grid" id="grid" aria-live="polite"></div>
+  </main>
+
+  <footer>Compact Charging — danh mục sản phẩm.</footer>
+</div>
+
+<script>
+/* ============================================================
+   CẤU HÌNH
+   ============================================================ */
+const SHEET_CSV_URLS = [];
+const COLUMNS = { name:"Tên sản phẩm", category:"Danh mục", link:"Link", image:"Ảnh" };
+
+const SAMPLE = [
+  { name:"Sạc nhanh GaN 65W 3 cổng",        category:"Sạc nhanh, Quà tặng doanh nghiệp", link:"#", image:"" },
+  { name:"Củ sạc nhanh 30W mini",           category:"Sạc nhanh",                        link:"#", image:"" },
+  { name:"Pin dự phòng MagSafe 10.000mAh",  category:"Pin dự phòng, MagSafe",            link:"#", image:"" },
+  { name:"Pin sạc dự phòng 20.000mAh",      category:"Pin dự phòng",                     link:"#", image:"" },
+  { name:"Đế sạc MagSafe gập gọn",          category:"MagSafe",                          link:"#", image:"" },
+  { name:"Cáp sạc nhanh Type-C 100W",       category:"Sạc nhanh, Phụ kiện",              link:"#", image:"" },
+  { name:"Quạt sạc mini cầm tay cho mẹ và bé", category:"Mẹ và bé, Phụ kiện",           link:"#", image:"" },
+  { name:"Đèn ngủ sạc USB ánh sáng dịu",    category:"Mẹ và bé",                         link:"#", image:"" },
+  { name:"Bộ quà tặng sạc + cáp khắc logo", category:"Quà tặng doanh nghiệp",            link:"#", image:"" },
+];
+
+/* ============================ CODE ============================ */
+const LS_KEY='cc_sheet_urls';
+let products=[], query="", urls=[];
+
+const $=id=>document.getElementById(id);
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const splitCats=s=>(s||"").split(',').map(x=>x.trim()).filter(Boolean);
+
+function parseCSV(text){
+  const rows=[];let row=[],field='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){field+='"';i++;}else q=false;}else field+=c;}
+    else{if(c==='"')q=true;else if(c===',') {row.push(field);field='';}
+      else if(c==='\n'){row.push(field);rows.push(row);row=[];field='';}
+      else if(c==='\r'){}else field+=c;}
+  }
+  if(field.length||row.length){row.push(field);rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()!==''));
+}
+function rowsToProducts(rows){
+  if(!rows.length)return[];
+  const head=rows[0].map(h=>h.trim());const idx=k=>head.indexOf(COLUMNS[k]);
+  const iN=idx('name'),iC=idx('category'),iL=idx('link'),iI=idx('image');
+  return rows.slice(1).map(r=>({
+    name:(iN>-1?r[iN]:'')||'',category:(iC>-1?r[iC]:'')||'',
+    link:(iL>-1?r[iL]:'')||'#',image:(iI>-1?r[iI]:'')||''
+  })).filter(p=>p.name);
+}
+function dedupe(arr){const seen=new Set();return arr.filter(p=>{const k=p.name+'|'+p.link;if(seen.has(k))return false;seen.add(k);return true;});}
+
+/* ---------- Panel ---------- */
+function renderRows(){
+  const r=$('rows');r.innerHTML='';
+  const list=urls.length?urls:[''];
+  list.forEach((u,i)=>{
+    const row=document.createElement('div');row.className='sheet-row';
+    row.innerHTML=`<span class="idx">${i+1}</span><input type="url" placeholder="Dán link CSV của Google Sheet…" value="${esc(u)}"><button class="rm" type="button" title="Xoá">×</button>`;
+    row.querySelector('.rm').onclick=()=>{collectInputs();urls.splice(i,1);renderRows();};
+    r.appendChild(row);
+  });
+}
+function collectInputs(){urls=[...document.querySelectorAll('.sheet-row input')].map(i=>i.value.trim()).filter(Boolean);}
+function showPanel(){$('panel').classList.remove('hidden');$('sourceBar').classList.add('hidden');renderRows();$('panelMsg').textContent='';}
+function hidePanel(){$('panel').classList.add('hidden');}
+function updateSourceBar(){$('srcCount').textContent=urls.length+' bảng Sheet';$('sourceBar').classList.remove('hidden');}
+
+async function loadFrom(list){
+  try{
+    const all=await Promise.all(list.map(u=>fetch(u).then(r=>{if(!r.ok)throw 0;return r.text()})));
+    const merged=dedupe(all.flatMap(t=>rowsToProducts(parseCSV(t))));
+    if(!merged.length)throw new Error('empty');
+    products=merged;render();return true;
+  }catch(e){return false;}
+}
+async function onLoad(){
+  collectInputs();
+  if(!urls.length){$('panelMsg').textContent='Hãy dán ít nhất một link Sheet.';return;}
+  $('panelMsg').textContent='Đang tải…';$('loadBtn').disabled=true;
+  const ok=await loadFrom(urls);$('loadBtn').disabled=false;
+  if(ok){lsSet(LS_KEY,JSON.stringify(urls));hidePanel();updateSourceBar();$('panelMsg').textContent='';}
+  else{$('panelMsg').textContent='Không đọc được. Kiểm tra link đã "Xuất bản lên web" dạng CSV chưa.';}
+}
+
+/* ---------- Lọc + hiển thị ---------- */
+function currentList(){
+  const q=query.trim().toLowerCase();
+  if(!q)return products;
+  return products.filter(p=>p.name.toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q));
+}
+function render(){
+  const q=query.trim();
+  if(!q){
+    $('exportBtn').disabled=true;
+    $('grid').innerHTML=`<div class="empty"><div class="big">Gõ từ khóa để tìm sản phẩm</div>Website sẽ tự lọc và tổng hợp tất cả sản phẩm khớp từ khóa từ các bảng Sheet đã nhập.</div>`;
+    return;
+  }
+  const list=currentList();
+  $('exportBtn').disabled=list.length===0;
+  if(!list.length){$('grid').innerHTML=`<div class="empty"><div class="big">Không tìm thấy sản phẩm</div>Thử gõ từ khoá khác.</div>`;return;}
+  $('grid').innerHTML=list.map(p=>{
+    const cats=splitCats(p.category).map(c=>`<span class="cat">${esc(c)}</span>`).join('');
+    const thumb=p.image?`<div class="thumb"><img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" onerror="this.parentNode.innerHTML='<span class=ph>⚡</span>'"></div>`:`<div class="thumb"><span class="ph">⚡</span></div>`;
+    const link=p.link&&p.link!=='#'?esc(p.link):'#';
+    return `<article class="card">${thumb}<div class="card-body"><div class="cats">${cats}</div><h3>${esc(p.name)}</h3>
+      <a class="go" href="${link}" ${link!=='#'?'target="_blank" rel="noopener"':''}>Xem sản phẩm
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a></div></article>`;
+  }).join('');
+}
+
+/* ---------- Xuất file CSV danh sách đã lọc ---------- */
+function csvCell(v){v=String(v==null?'':v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;}
+function downloadCSV(){
+  const list=currentList();
+  if(!list.length)return;
+  const header=[COLUMNS.name,COLUMNS.category,COLUMNS.link];
+  const lines=[header.join(',')];
+  list.forEach(p=>lines.push([csvCell(p.name),csvCell(p.category),csvCell(p.link)].join(',')));
+  const csv='\ufeff'+lines.join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const q=query.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu,'-').replace(/^-|-$/g,'');
+  const name='compact-charging'+(q?'-'+q:'-tat-ca')+'.csv';
+  const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();
+  a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+/* ---------- Sự kiện ---------- */
+$('addRow').onclick=()=>{collectInputs();urls.push('');renderRows();};
+$('loadBtn').onclick=onLoad;
+$('editBtn').onclick=showPanel;
+$('exportBtn').onclick=downloadCSV;
+$('search').addEventListener('input',e=>{query=e.target.value;render();});
+
+/* ---------- Khởi động ---------- */
+(function init(){
+  const saved=JSON.parse(lsGet(LS_KEY)||'null');
+  urls=(saved&&saved.length)?saved:SHEET_CSV_URLS.slice();
+  if(urls.length){
+    hidePanel();updateSourceBar();
+    loadFrom(urls).then(ok=>{if(!ok){products=SAMPLE;render();showPanel();}});
+  }else{
+    showPanel();products=SAMPLE;render();
+  }
+})();
+</script>
+</body>
+</html>
