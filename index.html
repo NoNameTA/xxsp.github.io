@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Hub — Gom & lọc sản phẩm từ Google Sheets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+  :root{
+    --ink:#E8ECF2;--paper:#0A0D12;--panel:#0F141B;--card:#141922;
+    --blue:#2E8BFF;--blue-hover:#1B79F0;--blue-soft:rgba(46,139,255,.14);
+    --ok:#36C58F;--warn:#E5B045;--err:#F0616D;
+    --slate:#8A93A1;--line:#222A35;--line-soft:#1A2029;
+    --radius:12px;--shadow:0 1px 2px rgba(0,0,0,.4),0 8px 26px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5}
+  a{color:var(--blue)}
+  /* layout */
+  .layout{min-height:100vh}
+  aside{position:fixed;top:0;left:0;height:100vh;width:244px;background:var(--panel);border-right:1px solid var(--line);padding:18px 14px;display:flex;flex-direction:column;gap:2px;transform:translateX(-100%);transition:transform .22s ease;z-index:50;overflow-y:auto}
+  aside.open{transform:translateX(0)}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
+  .overlay.show{opacity:1;pointer-events:auto}
+  .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:14px;background:var(--paper);border-bottom:1px solid var(--line);padding:12px 0;margin-bottom:22px}
+  .hamb{width:42px;height:42px;flex:none;border:1px solid var(--line);background:var(--card);border-radius:10px;color:var(--ink);font-size:19px;cursor:pointer;display:grid;place-items:center;transition:.13s}
+  .hamb:hover{border-color:var(--blue);color:var(--blue)}
+  .topbar-title{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
+  .brand{display:flex;align-items:center;gap:10px;padding:0 8px 14px}
+  .brand .bolt{width:34px;height:34px;background:var(--blue);border-radius:9px;display:grid;place-items:center;flex:none}
+  .brand .bolt svg{width:18px;height:18px}
+  .brand b{font-family:'Space Grotesk',sans-serif;font-size:16px;letter-spacing:-.01em}
+  .nav-group{margin-bottom:6px}
+  .nav-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.05em;color:var(--slate);text-transform:uppercase;padding:9px 12px 3px}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;color:var(--slate);font-weight:500;font-size:14px;cursor:pointer;border:none;background:none;width:100%;text-align:left;transition:.13s}
+  .nav-item svg{width:18px;height:18px;flex:none}
+  .nav-item:hover{background:var(--card);color:var(--ink)}
+  .nav-item.active{background:var(--blue);color:#fff}
+  .nav-foot{margin-top:auto;font-size:11px;color:var(--slate);padding:8px;font-family:'Space Mono',monospace}
+  main{padding:0 34px 60px;min-width:0}
+  .view{display:none}
+  .view.active{display:block}
+  h1.title{font-family:'Space Grotesk',sans-serif;font-size:24px;letter-spacing:-.02em;margin-bottom:4px}
+  .subtitle{color:var(--slate);font-size:14px;margin-bottom:24px}
+  /* generic */
+  .btn{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13.5px;border-radius:9px;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--ink);padding:9px 15px;transition:.13s;display:inline-flex;align-items:center;gap:7px}
+  .btn:hover{border-color:var(--blue);color:var(--blue)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn:disabled:hover{border-color:var(--line);color:var(--ink)}
+  .btn-primary{background:var(--blue);border-color:var(--blue);color:#fff}
+  .btn-primary:hover{background:var(--blue-hover);border-color:var(--blue-hover);color:#fff}
+  .btn-danger:hover{border-color:var(--err);color:var(--err)}
+  .btn svg{width:15px;height:15px}
+  .btn-sm{padding:6px 11px;font-size:12.5px}
+  input,select{font-family:inherit;font-size:14px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:9px;padding:10px 12px;outline:none;transition:.13s;width:100%}
+  input:focus,select:focus{border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-soft)}
+  label.field{display:block;margin-bottom:14px}
+  label.field span{display:block;font-size:12.5px;color:var(--slate);margin-bottom:6px;font-weight:500}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .grow{flex:1;min-width:0}
+  .muted{color:var(--slate)}
+  .badge{font-family:'Space Mono',monospace;font-size:11px;padding:2px 8px;border-radius:6px;background:var(--line-soft);color:var(--slate)}
+  .badge.ok{background:rgba(54,197,143,.14);color:var(--ok)}
+  .badge.err{background:rgba(240,97,109,.14);color:var(--err)}
+  .badge.warn{background:rgba(229,176,69,.14);color:var(--warn)}
+  /* stat cards */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:26px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px}
+  .stat .n{font-family:'Space Grotesk',sans-serif;font-size:30px;font-weight:700;letter-spacing:-.02em}
+  .stat .l{color:var(--slate);font-size:13px;margin-top:2px}
+  /* table */
+  .tablewrap{border:1px solid var(--line);border-radius:var(--radius);overflow:auto;background:var(--card)}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--line-soft);white-space:nowrap}
+  th{font-family:'Space Grotesk',sans-serif;font-size:12px;color:var(--slate);font-weight:600;position:sticky;top:0;background:var(--card);z-index:1}
+  tr:last-child td{border-bottom:none}
+  td.name{white-space:normal;min-width:240px;font-weight:500}
+  td.linkcell a{font-family:'Space Mono',monospace;font-size:12px}
+  tbody tr:hover{background:var(--line-soft)}
+  input[type=checkbox]{width:auto;accent-color:var(--blue);cursor:pointer;transform:scale(1.15)}
+  .toolbar{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:16px}
+  .filters{display:flex;gap:10px;flex-wrap:wrap}
+  .filters>*{flex:1;min-width:150px}
+  .pager{display:flex;align-items:center;gap:12px;justify-content:space-between;margin-top:14px;flex-wrap:wrap}
+  .pager .info{font-family:'Space Mono',monospace;font-size:12.5px;color:var(--slate)}
+  .empty{text-align:center;padding:50px 20px;color:var(--slate)}
+  .empty .big{font-family:'Space Grotesk',sans-serif;font-size:17px;color:var(--ink);margin-bottom:5px;font-weight:600}
+  /* sheet list */
+  .sheet-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--line-soft)}
+  .sheet-item:last-child{border-bottom:none}
+  .sheet-item .meta{flex:1;min-width:0}
+  .sheet-item .nm{font-weight:600;font-family:'Space Grotesk',sans-serif}
+  .sheet-item .sub{font-size:12px;color:var(--slate);font-family:'Space Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  /* banner */
+  .banner{background:rgba(229,176,69,.1);border:1px solid rgba(229,176,69,.3);color:var(--warn);border-radius:10px;padding:13px 16px;font-size:13.5px;margin-bottom:20px}
+  /* toast */
+  #toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:9px;z-index:99}
+  .toast{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--blue);border-radius:9px;padding:12px 16px;font-size:13.5px;box-shadow:var(--shadow);max-width:340px;animation:slidein .2s ease}
+  .toast.ok{border-left-color:var(--ok)} .toast.err{border-left-color:var(--err)} .toast.warn{border-left-color:var(--warn)}
+  @keyframes slidein{from{transform:translateY(10px);opacity:0}to{transform:none;opacity:1}}
+  .selbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--blue-soft);border:1px solid rgba(46,139,255,.3);border-radius:10px;padding:11px 15px;margin-bottom:14px}
+  .selbar b{font-family:'Space Grotesk',sans-serif}
+  .spin{width:14px;height:14px;border:2px solid var(--slate);border-top-color:var(--blue);border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .accrow{position:absolute;left:0;right:0;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line-soft);height:64px;box-sizing:border-box}
+  .accrow img,.accrow .noimg{width:40px;height:40px;border-radius:8px;object-fit:cover;flex:none;background:var(--line-soft)}
+  .accrow .info{min-width:0;flex:1}
+  .accrow .nm{font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .accrow .sel{font-family:'Space Mono',monospace;font-size:11px;color:var(--slate);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+  .acc-head{display:flex;align-items:center;gap:12px;padding:16px 18px;cursor:pointer;user-select:none}
+  .acc-head b{flex:1}
+  .acc-meta{font-family:'Space Mono',monospace;font-size:12px;color:var(--slate)}
+  .acc-chev{width:18px;height:18px;flex:none;color:var(--slate);transition:transform .22s ease}
+  .acc-panel.open .acc-chev{transform:rotate(180deg)}
+  .acc-body{max-height:0;overflow:hidden;transition:max-height .26s ease}
+  .acc-panel.open .acc-body{max-height:760px}
+  .acc-inner{padding:0 18px 18px}
+  /* Khung danh sách chọn (Nguồn dữ liệu & Facebook) — kiểu list box, mục đã chọn tô xanh */
+  .pick-list{border:1px solid var(--line);border-radius:10px;background:var(--paper);max-height:340px;min-height:120px;overflow:auto;padding:6px;display:flex;flex-direction:column;gap:4px}
+  .pick-list label{display:flex;align-items:center;gap:10px;margin:0;padding:9px 12px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:.12s}
+  .pick-list label:hover{background:var(--line-soft)}
+  .pick-list label:has(input:checked){background:var(--blue-soft);border-color:rgba(46,139,255,.45)}
+  .pick-list .muted{padding:10px}
+  /* Dropdown thu gọn: 1 thanh, bấm xổ ra danh sách để chọn */
+  .dropsel{position:relative}
+  .dropsel-bar{width:100%;display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px 14px;color:var(--ink);font-family:inherit;font-size:14px;cursor:pointer;text-align:left}
+  .dropsel-bar:hover{border-color:var(--blue)}
+  .dropsel-label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .dropsel-chev{width:18px;height:18px;flex:none;color:var(--slate);transition:transform .2s}
+  .dropsel.open .dropsel-chev{transform:rotate(180deg)}
+  .dropsel-panel{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20}
+  .dropsel.open .dropsel-panel{display:block}
+  .dropsel-panel .pick-list{box-shadow:var(--shadow);max-height:320px}
+  @media (max-width:780px){
+    aside{width:86vw;max-width:300px}
+    main{padding:0 18px 60px}
+    .topbar{margin-bottom:16px}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside id="drawer">
+    <div class="brand"><span class="bolt"><svg viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="#fff"/></svg></span><b>Product Hub</b></div>
+
+    <div class="nav-group">
+      <div class="nav-label">Tìm & lọc</div>
+      <button class="nav-item active" data-view="products"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 21l-4.3-4.3"/><circle cx="11" cy="11" r="7"/></svg> Tìm & lọc sản phẩm</button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Chọn số lượng</div>
+      <button class="nav-item" data-view="dataset"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg> Dataset Builder</button>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Quản lý & lịch sử</div>
+      <button class="nav-item" data-view="dashboard"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg> Dashboard</button>
+      <button class="nav-item" data-view="sheets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg> Thêm Sheet Dataset</button>
+      <button class="nav-item" data-view="dssheets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5"/></svg> TK Affiliate</button>
+      <button class="nav-item" data-view="accsheets"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg> Thêm Facebook</button>
+      <button class="nav-item" data-view="history"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg> Lịch sử tải</button>
+      <button class="nav-item" data-view="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg> Cài đặt</button>
+    </div>
+
+    <div class="nav-foot" id="connState">● chưa kết nối</div>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+
+  <main>
+    <div class="topbar">
+      <button class="hamb" id="hambBtn" aria-label="Mở menu">☰</button>
+      <span class="topbar-title" id="topbarTitle">Tìm & lọc sản phẩm</span>
+    </div>
+    <div id="banner"></div>
+
+    <!-- DASHBOARD -->
+    <section class="view active" id="view-dashboard">
+      <h1 class="title">Dashboard</h1>
+      <p class="subtitle">Tổng quan dữ liệu đã gộp từ các Google Sheets.</p>
+      <div class="stats" id="statCards"></div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:14px">
+          <b style="font-family:'Space Grotesk',sans-serif">Đồng bộ nhanh</b>
+          <button class="btn btn-primary btn-sm" id="dashSyncAll"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.8-3.4L21 8M20.5 15a9 9 0 0 1-14.8 3.4L3 16"/></svg> Đồng bộ tất cả Sheet</button>
+        </div>
+        <div id="dashSync" class="muted" style="font-size:13.5px">—</div>
+      </div>
+    </section>
+
+    <!-- SHEETS -->
+    <section class="view" id="view-sheets">
+      <h1 class="title">Thêm Sheet Dataset</h1>
+      <p class="subtitle">Thêm, sửa, xoá và đồng bộ các bảng nguồn. Tất cả Sheet phải cùng cấu trúc cột.</p>
+      <div class="card" style="margin-bottom:20px">
+        <div class="row" style="align-items:flex-end">
+          <div class="grow"><label class="field" style="margin:0"><span>Tên Sheet</span><input id="newSheetName" placeholder="VD: Tinh affiliate"></label></div>
+          <div class="grow" style="flex:2"><label class="field" style="margin:0"><span>Link Google Sheet (link thường cũng được)</span><input id="newSheetUrl" placeholder="https://docs.google.com/spreadsheets/d/..."></label></div>
+          <button class="btn btn-primary" id="addSheetBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Thêm</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px">
+          <b style="font-family:'Space Grotesk',sans-serif">Danh sách Sheet</b>
+          <button class="btn btn-sm" id="syncAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.8-3.4L21 8M20.5 15a9 9 0 0 1-14.8 3.4L3 16"/></svg> Đồng bộ tất cả</button>
+        </div>
+        <div id="sheetList"></div>
+      </div>
+    </section>
+
+    <!-- DATASET SHEETS -->
+    <section class="view" id="view-dssheets">
+      <h1 class="title">TK Affiliate</h1>
+      <p class="subtitle">Bộ Sheet riêng cho Dataset Builder (độc lập với Sheet của Tìm & lọc). Cùng cấu trúc cột sản phẩm, cùng cơ chế đọc/đồng bộ.</p>
+      <div class="card" style="margin-bottom:20px">
+        <div class="row" style="align-items:flex-end">
+          <div class="grow"><label class="field" style="margin:0"><span>Tên Sheet</span><input id="newDsName" placeholder="VD: Dataset Thời trang"></label></div>
+          <div class="grow" style="flex:2"><label class="field" style="margin:0"><span>Link Google Sheet</span><input id="newDsUrl" placeholder="https://docs.google.com/spreadsheets/d/..."></label></div>
+          <button class="btn btn-primary" id="addDsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Thêm</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;margin-bottom:6px">
+          <b style="font-family:'Space Grotesk',sans-serif">Danh sách Sheet Dataset</b>
+          <div class="row" style="gap:8px">
+            <button class="btn btn-sm" id="dsCheckColsBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Kiểm tra cột</button>
+            <button class="btn btn-sm" id="dsSyncAllBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 22v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.8-3.4L21 8M20.5 15a9 9 0 0 1-14.8 3.4L3 16"/></svg> Đồng bộ tất cả</button>
+          </div>
+        </div>
+        <div id="dsColCheck" style="display:none;margin-bottom:12px"></div>
+        <div id="dsSheetList"></div>
+      </div>
+    </section>
+
+    <!-- FACEBOOK -->
+    <section class="view" id="view-accsheets">
+      <h1 class="title">Thêm Facebook</h1>
+      <p class="subtitle">Thêm các dòng Facebook bằng tay — mỗi dòng là một mục riêng, giữ nguyên văn. Dùng để gắn vào file xuất ở Dataset Builder.</p>
+      <div class="card" style="margin-bottom:20px">
+        <label class="field" style="margin:0"><span>Dán/nhập các dòng Facebook (mỗi dòng một mục)</span>
+          <textarea id="fbAddInput" rows="8" placeholder="Yến Nam (Facebook) | 6a2930b4963e64796d008155&#10;Sơn Nguyễn (Facebook) | 6a225da905e339e9a60dc632&#10;Tiến Đạt (Facebook) | 6a225da855b6e1a87403f9d3" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:12px;font-family:'Space Mono',monospace;font-size:12.5px;line-height:1.7;resize:vertical"></textarea>
+        </label>
+        <button class="btn btn-primary" id="fbAddBtn" style="margin-top:12px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Thêm các dòng</button>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+          <b style="font-family:'Space Grotesk',sans-serif">Danh sách Facebook (<span id="fbListCount">0</span>)</b>
+          <button class="btn btn-sm btn-danger" id="fbClearAll">Xoá tất cả</button>
+        </div>
+        <div id="fbLines" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+    </section>
+
+    <!-- PRODUCTS -->
+    <section class="view" id="view-products">
+      <h1 class="title">Sản phẩm</h1>
+      <p class="subtitle">Tìm trên toàn bộ dữ liệu đã gộp. Sản phẩm đã tải trước đó được tự động ẩn.</p>
+      <div class="toolbar">
+        <div class="row">
+          <div class="grow"><input id="searchBox" placeholder="Gõ từ khóa (vd: áo, vợt, sạc…) — tìm gần đúng, không phân biệt hoa thường"></div>
+          <select id="sortSel" style="max-width:170px">
+            <option value="new">Mới nhất</option>
+            <option value="old">Cũ nhất</option>
+            <option value="az">Tên A → Z</option>
+            <option value="za">Tên Z → A</option>
+          </select>
+        </div>
+        <div class="filters">
+          <select id="fCategory"><option value="">— Tất cả danh mục —</option></select>
+          <select id="fSubid"><option value="">— Tất cả Sub ID —</option></select>
+          <select id="fSheet"><option value="">— Tất cả Sheet nguồn —</option></select>
+        </div>
+        <div class="row" style="margin-top:10px;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="muted" style="font-size:13px">Tải nhanh theo số lượng:</span>
+          <input id="dlQty" type="number" min="1" placeholder="Số lượng" style="max-width:150px">
+          <button class="btn btn-sm btn-primary" id="dlPick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 13l4 4L19 7"/></svg> Tích & sẵn sàng tải</button>
+          <span class="muted" id="dlHint" style="font-size:12.5px"></span>
+        </div>
+      </div>
+
+      <div class="selbar" id="selBar" style="display:none">
+        <b id="selCount">0</b><span class="muted">sản phẩm đã chọn</span>
+        <span class="grow"></span>
+        <button class="btn btn-sm" id="selPage">Chọn cả trang</button>
+        <button class="btn btn-sm" id="selClear">Bỏ chọn</button>
+        <button class="btn btn-sm" id="expCsv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg> CSV</button>
+        <button class="btn btn-sm" id="expXlsx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg> Excel</button>
+        <button class="btn btn-sm" id="expCopy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg> Copy</button>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr>
+            <th style="width:40px"><input type="checkbox" id="checkAll"></th>
+            <th>Tên sản phẩm</th><th>Danh mục</th><th>Sub ID</th><th>Sheet nguồn</th><th>Link Shopee</th>
+          </tr></thead>
+          <tbody id="prodBody"><tr><td colspan="6"><div class="empty"><div class="big">Gõ từ khóa hoặc chọn bộ lọc để xem sản phẩm</div></div></td></tr></tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span class="info" id="pageInfo">—</span>
+        <div class="row">
+          <button class="btn btn-sm" id="prevPage">‹ Trước</button>
+          <button class="btn btn-sm" id="nextPage">Sau ›</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- DATASET BUILDER -->
+    <section class="view" id="view-dataset">
+      <h1 class="title">Dataset Builder</h1>
+      <p class="subtitle">Tạo bộ dữ liệu theo số lượng cho từng danh mục. Chỉ lấy sản phẩm chưa từng tải, không trùng Link Shopee.</p>
+
+      <div class="card" style="margin-bottom:20px">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
+          <b style="font-family:'Space Grotesk',sans-serif">1 · Nguồn dữ liệu</b>
+          <label class="muted" style="font-size:13px;display:flex;align-items:center;gap:8px"><input type="checkbox" id="dsSrcAll"> Chọn tất cả Sheet</label>
+        </div>
+        <div class="dropsel" id="dsSrcDrop">
+          <button type="button" class="dropsel-bar" id="dsSrcBar"><span class="dropsel-label" id="dsSrcLabel">— Chọn Sheet —</span><svg class="dropsel-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></button>
+          <div class="dropsel-panel"><div id="dsSrcList" class="pick-list"></div></div>
+        </div>
+        <p class="muted" style="font-size:12.5px;margin-top:12px;margin-bottom:0">⚠ Hệ thống chỉ lấy sản phẩm <b>có BÀI VIẾT</b>. Sản phẩm có BÀI VIẾT rỗng / chỉ khoảng trắng sẽ tự bỏ qua, chờ khi nào có nội dung.</p>
+        <input type="hidden" id="dsOnlyContent" checked>
+      </div>
+
+      <div class="card" style="margin-bottom:20px">
+        <b style="font-family:'Space Grotesk',sans-serif;display:block;margin-bottom:12px">2 · Chọn số lượng theo danh mục</b>
+        <div id="dsConfigRows"></div>
+        <div class="row" style="margin-top:12px;justify-content:space-between">
+          <button class="btn" id="dsAddRow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg> Thêm danh mục</button>
+          <div class="row">
+            <label class="muted" style="font-size:13px;display:flex;align-items:center;gap:8px">Cách lấy
+              <select id="dsMode" style="width:auto"><option value="fifo">Theo thứ tự (FIFO)</option><option value="random">Ngẫu nhiên</option></select>
+            </label>
+            <button class="btn btn-primary" id="dsBuild"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/></svg> Tạo bộ dữ liệu</button>
+          </div>
+        </div>
+        <div id="dsSummary" class="muted" style="font-size:13.5px;margin-top:12px"></div>
+      </div>
+
+      <div class="card" id="dsFbCard" style="margin-bottom:20px">
+        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px">
+          <b style="font-family:'Space Grotesk',sans-serif">3 · Facebook</b>
+          <div class="row" style="align-items:center;gap:10px">
+            <span class="muted" id="dsFbMeta" style="font-family:'Space Mono',monospace;font-size:12.5px">0/0 dòng</span>
+            <button class="btn btn-sm" id="dsFbAll">Chọn tất cả</button>
+            <button class="btn btn-sm" id="dsFbNone">Bỏ chọn</button>
+          </div>
+        </div>
+        <div class="dropsel" id="dsFbDrop">
+          <input type="text" id="dsFbSearch" placeholder="Gõ tên Facebook để tìm (vd: Yến Nam)…" autocomplete="off">
+          <div class="dropsel-panel"><div id="dsFbList" class="pick-list"></div></div>
+        </div>
+        <p class="muted" id="dsFbHint" style="font-size:12.5px;margin-top:10px">Gõ tên để lọc, tick chọn nhiều Facebook. Các Facebook được chọn sẽ gắn vào cột Channel, chia theo khối liên tiếp.</p>
+      </div>
+
+      <div class="card" id="dsResultCard" style="display:none">
+        <div class="row" style="justify-content:space-between;margin-bottom:14px">
+          <b style="font-family:'Space Grotesk',sans-serif">Bộ dữ liệu (<span id="dsCount">0</span> sản phẩm)</b>
+          <div class="row">
+            <button class="btn btn-sm" id="dsCsv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg> CSV</button>
+            <button class="btn btn-sm" id="dsXlsx"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/></svg> Excel</button>
+            <button class="btn btn-sm" id="dsCopy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg> Copy</button>
+          </div>
+        </div>
+        <div class="row" style="margin-bottom:12px">
+          <div class="grow"><input id="dsSearch" placeholder="Tìm trong bộ dữ liệu…"></div>
+          <div class="grow" style="position:relative"><input id="dsAddSearch" placeholder="Thêm sản phẩm khác: gõ để tìm rồi bấm để thêm…"><div id="dsAddResults" style="position:absolute;left:0;right:0;top:46px;z-index:5"></div></div>
+        </div>
+        <div class="tablewrap">
+          <table><thead><tr><th>Tên sản phẩm</th><th>Danh mục</th><th>Sub ID</th><th>Link Shopee</th><th style="width:60px"></th></tr></thead>
+          <tbody id="dsBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="view" id="view-history">
+      <h1 class="title">Lịch sử tải</h1>
+      <p class="subtitle">Các Link Shopee đã từng tải. Những link này sẽ không hiện lại ở mục Sản phẩm.</p>
+      <div class="row" style="justify-content:space-between;margin-bottom:14px">
+        <span class="muted" id="histCount">—</span>
+        <button class="btn btn-sm btn-danger" id="clearHist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m-9 0v14a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V6"/></svg> Xoá toàn bộ lịch sử</button>
+      </div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Tên sản phẩm</th><th>Danh mục</th><th>Sub ID</th><th>Link Shopee</th><th>Thời gian tải</th></tr></thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="view" id="view-settings">
+      <h1 class="title">Cài đặt</h1>
+      <p class="subtitle">Kết nối Supabase và cấu hình cột dữ liệu.</p>
+      <div class="card" style="margin-bottom:20px;max-width:640px">
+        <b style="font-family:'Space Grotesk',sans-serif">Kết nối Supabase</b>
+        <p class="muted" style="font-size:13px;margin:6px 0 16px">Kết nối đã được <b>nhúng sẵn</b> — ai mở trang cũng dùng chung. Muốn đổi cần <b>mật khẩu</b>.</p>
+        <div id="connFields" style="display:none">
+          <label class="field"><span>Project URL</span><input id="setUrl" placeholder="https://xxxx.supabase.co"></label>
+          <label class="field"><span>anon public key</span><input id="setKey" placeholder="eyJhbGciOi..."></label>
+          <label class="field"><span>Google Apps Script Web App URL (để ghi trạng thái về Sheet)</span><input id="setScript" placeholder="https://script.google.com/macros/s/..../exec"></label>
+        </div>
+        <div class="row">
+          <button class="btn btn-primary" id="saveConn" style="display:none">Lưu & kết nối</button>
+          <button class="btn" id="unlockConn">🔒 Đổi kết nối</button>
+          <button class="btn" id="resetConn" style="display:none">Khôi phục mặc định</button>
+        </div>
+        <span id="connMsg" style="margin-left:10px;font-size:13px"></span>
+      </div>
+      <div class="card" style="margin-bottom:20px;max-width:640px">
+        <b style="font-family:'Space Grotesk',sans-serif">Tên cột trong Google Sheet</b>
+        <p class="muted" style="font-size:13px;margin:6px 0 16px">Ghi đúng tiêu đề cột (dòng đầu) trong Sheet của bạn.</p>
+        <div class="row">
+          <label class="field grow"><span>Link Shopee</span><input id="colLink"></label>
+          <label class="field grow"><span>Tên sản phẩm</span><input id="colName"></label>
+        </div>
+        <div class="row">
+          <label class="field grow"><span>Link Rút Gọn</span><input id="colShort"></label>
+          <label class="field grow"><span>Sub ID 1</span><input id="colSub"></label>
+        </div>
+        <div class="row">
+          <label class="field grow"><span>Sub ID 2</span><input id="colSub2"></label>
+          <label class="field grow"><span>LINK VIDEO TIKTOK</span><input id="colTik"></label>
+        </div>
+        <div class="row">
+          <label class="field grow"><span>LINK Fastmoss</span><input id="colFm"></label>
+          <label class="field grow"><span>ID VIDEO FB</span><input id="colFb"></label>
+        </div>
+        <div class="row">
+          <label class="field grow"><span>Danh mục</span><input id="colCat"></label>
+          <label class="field grow"><span>BÀI VIẾT</span><input id="colBaiviet"></label>
+        </div>
+        <div class="row">
+          <label class="field grow"><span>Media Link (Link Drive)</span><input id="colMedia"></label>
+          <label class="field grow"><span>Schedule (cột thời gian)</span><input id="colSchedule"></label>
+        </div>
+        <div class="row">
+          <label class="field grow"><span>PAGE (phải để trống mới lấy)</span><input id="colPage"></label>
+          <label class="field grow"><span>TRẠNG THÁI (ĐÃ LẤY thì bỏ qua)</span><input id="colStatus"></label>
+        </div>
+        <button class="btn btn-primary" id="saveCols">Lưu cột</button>
+      </div>
+      <div class="card" style="max-width:640px">
+        <b style="font-family:'Space Grotesk',sans-serif">Đồng bộ tự động</b>
+        <p class="muted" style="font-size:13px;margin:6px 0 16px">Khi đang mở web, tự đồng bộ lại sau mỗi N phút (0 = tắt).</p>
+        <label class="field" style="max-width:200px"><span>Chu kỳ (phút)</span><input id="setAuto" type="number" min="0" value="0"></label>
+        <button class="btn btn-primary" id="saveAuto">Lưu</button>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="toasts"></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+/* ============================================================
+   1) CONFIG (lưu trong trình duyệt)
+   ============================================================ */
+const CFG_KEY='ph_config';
+/* ==== KẾT NỐI MẶC ĐỊNH (nhúng sẵn — ai mở trang cũng dùng chung) ==== */
+const BAKED_URL='https://ztwefkalncrhtvvfmldn.supabase.co';
+const BAKED_KEY='sb_publishable_DvqTXJnlPNokfa8wJmbUWw_FsORXng7';
+/* Mật khẩu đổi kết nối — lưu dạng SHA-256, KHÔNG để lộ mật khẩu gốc */
+const ADMIN_HASH='521f0a08b734797b631279a2d04e939bd1d481a3c02634fe2e01cdcfac742038';
+/* URL Google Apps Script Web App để GHI ngược trạng thái vào Sheet (nhúng sẵn — ai mở cũng dùng chung) */
+const BAKED_SCRIPT_URL='https://script.google.com/macros/s/AKfycbz30lgdQ6-bv9c2BMUBXLNq8jMNu4f9l10cb16jArfH9LxOWZSYov3mLuY62MKQqMvp/exec';
+const defaults={ url:BAKED_URL, key:BAKED_KEY, autoMin:0, scriptUrl:BAKED_SCRIPT_URL,
+  cols:{ link:'Link shopee', name:'TÊN SẢN PHẨM', shortlink:'Link Rút Gọn', subid:'Sub ID', subid2:'Sub ID 2', tiktok:'LINK VIDEO', fastmoss:'LINK Fastmoss', fbid:'ID VIDEO FB', category:'DANH MỤC', baiviet:'BÀI VIẾT', medialink:'Link Drive', schedule:'Ngày', page:'PAGE', status:'TRẠNG THÁI' } };
+/* Nếu localStorage còn lưu kết nối CŨ/khác baked, vẫn ưu tiên baked cho URL/key để mọi máy đồng nhất.
+   (Người có mật khẩu vẫn đổi được; khi đổi sẽ lưu đè vào localStorage.) */
+function loadCfg(){ try{ const saved=JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); const c=Object.assign({},defaults,saved); c.cols=Object.assign({},defaults.cols,saved.cols||{});
+  // Dọn giá trị hỏng (rỗng / "undefined") -> dùng tên cột mặc định
+  for(const k in defaults.cols){ const v=c.cols[k]; if(v==null || String(v).trim()==='' || String(v).trim().toLowerCase()==='undefined') c.cols[k]=defaults.cols[k]; }
+  return c; }catch(e){ return {...defaults}; } }
+function saveCfg(c){ localStorage.setItem(CFG_KEY, JSON.stringify(c)); }
+let cfg=loadCfg();
+
+/* ============================================================
+   2) SUPABASE CLIENT
+   ============================================================ */
+let supa=null;
+function initClient(){
+  if(cfg.url && cfg.key){ try{ supa=createClient(cfg.url,cfg.key); }catch(e){ supa=null; } }
+  else supa=null;
+  document.getElementById('connState').textContent = supa? '● đã kết nối':'● chưa kết nối';
+  document.getElementById('connState').style.color = supa? 'var(--ok)':'var(--slate)';
+}
+
+/* ============================================================
+   3) HELPERS
+   ============================================================ */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+function toast(msg,type='info'){ const t=document.createElement('div'); t.className='toast '+type; t.textContent=msg; $('#toasts').appendChild(t); setTimeout(()=>{t.style.opacity='0';setTimeout(()=>t.remove(),250)},3200); }
+function fmtTime(s){ if(!s)return '—'; const d=new Date(s); return d.toLocaleString('vi-VN'); }
+
+/* chuyển link Sheet thường -> link CSV đọc được (ưu tiên export để giữ đủ cột) */
+function toCsvUrl(u){
+  u=(u||'').trim(); if(!u)return'';
+  if(/output=csv/i.test(u)||/[?&]format=csv/i.test(u)||/tqx=out:csv/i.test(u))return u;
+  const m=u.match(/\/spreadsheets\/d\/([a-zA-Z0-9\-_]+)/);
+  if(m){ const g=u.match(/[#&?]gid=([0-9]+)/); return 'https://docs.google.com/spreadsheets/d/'+m[1]+'/gviz/tq?tqx=out:csv&headers=1&gid='+(g?g[1]:'0'); }
+  return u;
+}
+function exportCsvUrl(u){ const m=(u||'').match(/\/spreadsheets\/d\/([a-zA-Z0-9\-_]+)/); if(!m)return''; const g=(u||'').match(/[#&?]gid=([0-9]+)/); return 'https://docs.google.com/spreadsheets/d/'+m[1]+'/export?format=csv&gid='+(g?g[1]:'0'); }
+const normHeader=s=>String(s==null?'':s).normalize('NFC').replace(/\s+/g,' ').trim().toLowerCase();
+function parseUrlMeta(u){ const m=(u||'').match(/\/spreadsheets\/d\/([a-zA-Z0-9\-_]+)/); const g=(u||'').match(/[#&?]gid=([0-9]+)/); return { sheet_id:m?m[1]:'', gid:g?g[1]:'0' }; }
+function parseCSV(text){
+  const rows=[];let row=[],f='',q=false;
+  for(let i=0;i<text.length;i++){const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(f);f='';} else if(c==='\n'){row.push(f);rows.push(row);row=[];f='';} else if(c==='\r'){} else f+=c; }
+  }
+  if(f.length||row.length){row.push(f);rows.push(row);}
+  return rows.filter(r=>r.some(c=>c.trim()!==''));
+}
+function csvToItems(text){
+  const rows=parseCSV(text); if(!rows.length)return[];
+  const head=rows[0].map(h=>normHeader(h)); const ix=k=>head.indexOf(normHeader(cfg.cols[k])); const v=(r,k)=>{const i=ix(k);return (i>-1?r[i]:'')||'';};
+  return rows.slice(1).map(r=>({
+    link:v(r,'link'), name:v(r,'name'), shortlink:v(r,'shortlink'),
+    subid:v(r,'subid'), subid2:v(r,'subid2'), tiktok:v(r,'tiktok'),
+    fastmoss:v(r,'fastmoss'), fbid:v(r,'fbid'), category:v(r,'category'),
+    baiviet:v(r,'baiviet'), medialink:v(r,'medialink'), schedule:v(r,'schedule'), page:v(r,'page'), status:v(r,'status')
+  })).filter(p=>p.name && p.link);
+}
+
+/* ============================================================
+   4) DATA LAYER (repositories)
+   ============================================================ */
+const SheetRepo={
+  async list(){ const {data,error}=await supa.from('sheets').select('*').order('created_at',{ascending:true}); if(error)throw error; return data||[]; },
+  async add(s){ const {data,error}=await supa.from('sheets').insert(s).select().single(); if(error)throw error; return data; },
+  async update(id,patch){ const {error}=await supa.from('sheets').update(patch).eq('id',id); if(error)throw error; },
+  async remove(id){ const {error}=await supa.from('sheets').delete().eq('id',id); if(error)throw error; },
+};
+/* Chèn nhiều dòng, tự bỏ cột 'status' nếu bảng chưa có cột đó (không làm hỏng đồng bộ) */
+async function insertManyInto(table, items){
+  for(let i=0;i<items.length;i+=500){ const slice=items.slice(i,i+500);
+    let {error}=await supa.from(table).insert(slice);
+    if(error){ const stripped=slice.map(({status,...r})=>r); const r2=await supa.from(table).insert(stripped); if(r2.error) throw r2.error; }
+  }
+}
+const ProductRepo={
+  async deleteBySheet(sheetId){ const {error}=await supa.from('products').delete().eq('source_sheet_id',sheetId); if(error)throw error; },
+  async insertMany(items){ return insertManyInto('products', items); },
+  /* ĐỌC: lấy thẳng từ bảng gốc qua productStore (không phụ thuộc view available_products) */
+  async query(f){ const rows=await productStore.ensure(); let r=sortRows(filterRows(rows,f),f.sort); const total=r.length; const from=(f.page-1)*f.pageSize; return {rows:r.slice(from,from+f.pageSize), total}; },
+  async distinct(col){ const rows=await productStore.ensure(); return [...new Set(rows.map(r=>r[col]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b),'vi')); },
+  async pickN(f,n){ const rows=await productStore.ensure(); return sortRows(filterRows(rows,f),f.sort).slice(0,n); },
+  async total(){ const {count,error}=await supa.from('products').select('id',{count:'exact',head:true}); if(error)throw error; return count||0; },
+  async available(){ const rows=await productStore.ensure(); return rows.length; },
+};
+const HistoryRepo={
+  async add(items){ const rows=items.map(p=>({link:p.link,name:p.name,subid:p.subid,category:p.category})); const {error}=await supa.from('download_history').upsert(rows,{onConflict:'link',ignoreDuplicates:true}); if(error)throw error; },
+  async list(){ const {data,error}=await supa.from('download_history').select('*').order('downloaded_at',{ascending:false}).limit(2000); if(error)throw error; return data||[]; },
+  async allLinks(){ const out=[]; const page=1000; for(let from=0;;from+=page){ const {data,error}=await supa.from('download_history').select('link').range(from,from+page-1); if(error)throw error; if(!data||!data.length)break; out.push(...data.map(r=>r.link)); if(data.length<page)break; } return out; },
+  async count(){ const {count,error}=await supa.from('download_history').select('link',{count:'exact',head:true}); if(error)throw error; return count||0; },
+  async clear(){ const {error}=await supa.from('download_history').delete().neq('link',''); if(error)throw error; },
+};
+
+/* ---- Dataset Builder: bộ Sheet & sản phẩm RIÊNG ---- */
+const DatasetSheetRepo={
+  async list(){ const {data,error}=await supa.from('dataset_sheets').select('*').order('created_at',{ascending:true}); if(error)throw error; return data||[]; },
+  async add(s){ const {data,error}=await supa.from('dataset_sheets').insert(s).select().single(); if(error)throw error; return data; },
+  async update(id,patch){ const {error}=await supa.from('dataset_sheets').update(patch).eq('id',id); if(error)throw error; },
+  async remove(id){ const {error}=await supa.from('dataset_sheets').delete().eq('id',id); if(error)throw error; },
+};
+/* Đủ điều kiện đưa vào Dataset/so9: có BÀI VIẾT (Content) và PAGE để trống */
+function dsEligible(p){ return String(p.baiviet==null?'':p.baiviet).trim()!=='' && String(p.page==null?'':p.page).trim()===''; }
+/* Trong phạm vi các Sheet đã chọn (chỉ lọc theo nguồn, KHÔNG lọc điều kiện) */
+function dsInScope(rows,ids){ if(!ids||!ids.length) return []; return rows.filter(p=> ids.includes(p.source_sheet_id)); }
+/* Vừa đúng nguồn vừa đủ điều kiện (dùng khi đếm & khi tạo dữ liệu) */
+function dsFilter(rows,ids){ return dsInScope(rows,ids).filter(dsEligible); }
+const DatasetProductRepo={
+  async deleteBySheet(id){ const {error}=await supa.from('dataset_products').delete().eq('source_sheet_id',id); if(error)throw error; },
+  async insertMany(items){ return insertManyInto('dataset_products', items); },
+  /* Đánh dấu ĐÃ LẤY ngay trên Supabase để ẩn liền (không cần chờ đồng bộ lại) */
+  async markTaken(links){ const ls=[...new Set((links||[]).map(l=>String(l||'').trim()).filter(Boolean))]; for(let i=0;i<ls.length;i+=100){ const {error}=await supa.from('dataset_products').update({status:'ĐÃ LẤY'}).in('link',ls.slice(i,i+100)); if(error)throw error; } },
+  /* ĐỌC: lấy thẳng từ bảng gốc dataset_products qua datasetStore (không phụ thuộc view dataset_available) */
+  /* Danh mục: BẮT BUỘC sản phẩm đủ điều kiện (có BÀI VIẾT + PAGE trống). Chỉ hiện danh mục có ≥1 sp đủ điều kiện. */
+  async distinctCats(ids){ if(!ids||!ids.length) return []; const rows=await datasetStore.ensure(); const inScope=dsInScope(rows,ids); const eligible=inScope.filter(dsEligible);
+    const cats=[...new Set(eligible.map(r=>r.category).filter(c=>String(c||'').trim()!==''))].sort((a,b)=>String(a).localeCompare(String(b),'vi'));
+    if(!cats.length){
+      if(rows.length===0) toast('Chưa đọc được sản phẩm Dataset nào (bảng dataset_products trống hoặc tất cả đã tải). Hãy đồng bộ lại ở mục TK Affiliate.','warn');
+      else if(inScope.length===0) toast('Không có sản phẩm thuộc các Sheet đang tích.','warn');
+      else if(eligible.length===0){ const nBai=inScope.filter(p=>String(p.baiviet==null?'':p.baiviet).trim()!=='').length; const nPage=inScope.filter(p=>String(p.page==null?'':p.page).trim()==='').length; toast(`Đã đọc ${inScope.length} sản phẩm nhưng 0 sp đủ điều kiện (BÀI VIẾT + PAGE trống). Có BÀI VIẾT: ${nBai} · PAGE trống: ${nPage}. Kiểm tra tên cột "BÀI VIẾT"/"PAGE" ở Cài đặt hoặc dùng "Kiểm tra cột" ở TK Affiliate.`,'warn'); }
+      else toast('Có sản phẩm đủ điều kiện nhưng cột DANH MỤC trống. Vào Cài đặt kiểm tra tên cột "Danh mục".','warn');
+    }
+    return cats; },
+  async countCat(cat,ids){ const rows=await datasetStore.ensure(); return dsFilter(rows,ids).filter(r=>r.category===cat).length; },
+  async fetchCat(cat,ids,mode,cap=8000){ const rows=await datasetStore.ensure(); let r=dsFilter(rows,ids).filter(p=>p.category===cat); if(mode==='fifo')r=[...r].sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0)); return r.slice(0,cap); },
+  async search(kw,ids,cap=8){ const rows=await datasetStore.ensure(); const k=(kw||'').trim().toLowerCase(); return dsInScope(rows,ids).filter(dsEligible).filter(p=>matchKw(p,k)).slice(0,cap); },
+};
+const FacebookRepo={
+  async list(){ const {data,error}=await supa.from('facebook_accounts').select('id,selector').order('created_at',{ascending:true}).limit(20000); if(error)throw error; return data||[]; },
+  async addLines(lines){ const rows=lines.map(l=>({selector:l})); for(let i=0;i<rows.length;i+=500){ const {error}=await supa.from('facebook_accounts').insert(rows.slice(i,i+500)); if(error)throw error; } },
+  async remove(id){ const {error}=await supa.from('facebook_accounts').delete().eq('id',id); if(error)throw error; },
+  async clearAll(){ const {error}=await supa.from('facebook_accounts').delete().not('id','is',null); if(error)throw error; },
+};
+
+/* ---- KHO DỮ LIỆU TRONG TRÌNH DUYỆT ----
+   Đọc toàn bộ bảng gốc 1 lần, tự lọc link đã tải (download_history) và ghép tên Sheet.
+   Mọi tìm kiếm / lọc / phân trang đều chạy client-side -> luôn "đọc được Sheet". */
+const normLink=s=>String(s==null?'':s).trim();
+/* Bỏ dấu để so khớp tiếng Việt linh hoạt */
+function noDiacritics(s){ return String(s==null?'':s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D'); }
+/* Sản phẩm "không đạt yêu cầu" ở cột LINK Fastmoss -> KHÔNG lấy (vd: "(sp ko đạt yêu cầu)") */
+function fastmossRejected(p){ const s=noDiacritics(String(p.fastmoss==null?'':p.fastmoss)).toLowerCase(); return /(khong|ko|k)\s*dat\s*yeu\s*cau/.test(s); }
+/* TRẠNG THÁI = ĐÃ LẤY -> đã xuất rồi, loại khỏi mọi danh sách cho tới khi admin xoá/đổi trạng thái trên Sheet */
+function isTaken(p){ return noDiacritics(String(p.status==null?'':p.status)).toLowerCase().includes('da lay'); }
+function makeStore(table, sheetRepo, opts){
+  opts=opts||{};
+  return {
+    rows:[], loaded:false, loading:null,
+    invalidate(){ this.loaded=false; this.rows=[]; this.loading=null; },
+    async ensure(force){
+      if(force) this.invalidate();
+      if(this.loaded) return this.rows;
+      if(this.loading) return this.loading;
+      this.loading=(async()=>{
+        const all=[]; const page=1000;
+        for(let from=0;;from+=page){
+          // Sắp xếp theo 'id' (luôn tồn tại) để phân trang ổn định, không lỗi khi bảng thiếu cột created_at
+          const {data,error}=await supa.from(table).select('*').order('id',{ascending:true}).range(from,from+page-1);
+          if(error)throw error;
+          if(!data||!data.length)break; all.push(...data);
+          if(data.length<page)break;
+        }
+        let sheets=[]; try{ sheets=await sheetRepo.list(); }catch(e){}
+        const smap=new Map(sheets.map(s=>[s.id,s.name]));
+        let hlinks=[]; try{ hlinks=await HistoryRepo.allLinks(); }catch(e){}
+        const hset=new Set(hlinks.map(normLink));
+        this.rows=all
+          .filter(p=>p && normLink(p.link) && String(p.name||'').trim())
+          .filter(p=>!hset.has(normLink(p.link)))
+          .filter(p=> !isTaken(p))                                      // ĐÃ LẤY (trên Google Sheet) -> loại bỏ
+          .filter(p=> !opts.excludeFastmossReject || !fastmossRejected(p))
+          .map(p=>({...p, sheet_name: smap.get(p.source_sheet_id)||''}));
+        this.loaded=true; this.loading=null;
+        return this.rows;
+      })();
+      try{ return await this.loading; }catch(e){ this.loading=null; this.loaded=false; throw e; }
+    }
+  };
+}
+const productStore = makeStore('products', SheetRepo, {excludeFastmossReject:true}); // Tìm & lọc: bỏ sp "ko đạt yêu cầu" ở LINK Fastmoss
+const datasetStore = makeStore('dataset_products', DatasetSheetRepo);
+
+/* Lọc / tìm / sắp xếp dùng chung cho cả 2 kho */
+function matchKw(p,k){ if(!k)return true; k=k.toLowerCase();
+  return String(p.name||'').toLowerCase().includes(k) || String(p.category||'').toLowerCase().includes(k) || String(p.subid||'').toLowerCase().includes(k); }
+function filterRows(rows,{keyword,category,subid,sheetId}){
+  const k=(keyword||'').trim().toLowerCase();
+  return rows.filter(p=> matchKw(p,k)
+    && (!category || p.category===category)
+    && (!subid || p.subid===subid)
+    && (!sheetId || p.source_sheet_id===sheetId));
+}
+function sortRows(rows,sort){
+  const r=[...rows];
+  if(sort==='az') r.sort((a,b)=>String(a.name).localeCompare(String(b.name),'vi'));
+  else if(sort==='za') r.sort((a,b)=>String(b.name).localeCompare(String(a.name),'vi'));
+  else if(sort==='old') r.sort((a,b)=>new Date(a.created_at||0)-new Date(b.created_at||0));
+  else r.sort((a,b)=>new Date(b.created_at||0)-new Date(a.created_at||0));
+  return r;
+}
+
+/* ============================================================
+   5) SYNC SERVICE
+   ============================================================ */
+async function fetchSheetCsv(url){
+  const exp=exportCsvUrl(url);
+  if(exp){ try{ const r=await fetch(exp); if(r.ok){ const t=await r.text(); if(t && !/<html/i.test(t.slice(0,200))) return t; } }catch(e){} }
+  const r2=await fetch(toCsvUrl(url)); if(!r2.ok) throw new Error('HTTP '+r2.status);
+  const t2=await r2.text(); if(/<html/i.test(t2.slice(0,200))) throw new Error('Sheet chưa chia sẻ công khai'); return t2;
+}
+let lastSyncDiag=null;
+async function syncSheetGeneric(sheet, sheetRepo, prodRepo){
+  await sheetRepo.update(sheet.id,{status:'syncing'});
+  try{
+    const text=await fetchSheetCsv(sheet.url);
+    const rowsRaw=parseCSV(text); const rawHead=(rowsRaw[0]||[]).map(h=>String(h).trim());
+    const items=csvToItems(text).map(p=>({...p,source_sheet_id:sheet.id}));
+    const baivietFound = rawHead.map(normHeader).includes(normHeader(cfg.cols.baiviet));
+    const withBaiviet = items.filter(p=>String(p.baiviet||'').trim()!=='').length;
+    lastSyncDiag={sheet:sheet.name, headers:rawHead, total:items.length, withBaiviet, baivietFound, mediaCol:cfg.cols.medialink};
+    console.log('[Đồng bộ] '+sheet.name+' — cột trong Sheet:', rawHead, '| có BÀI VIẾT:', withBaiviet+'/'+items.length);
+    if(!baivietFound) toast(`⚠ Không thấy cột "${cfg.cols.baiviet}" trong "${sheet.name}". Cột thật: ${rawHead.join(' | ')}`,'warn');
+    else if(withBaiviet===0) toast(`⚠ "${sheet.name}": có cột BÀI VIẾT nhưng 0 sản phẩm có nội dung.`,'warn');
+    await prodRepo.deleteBySheet(sheet.id);
+    if(items.length) await prodRepo.insertMany(items);
+    await sheetRepo.update(sheet.id,{status:'active',product_count:items.length,last_synced_at:new Date().toISOString()});
+    return items.length;
+  }catch(e){
+    await sheetRepo.update(sheet.id,{status:'error'});
+    throw e;
+  }
+}
+async function syncSheet(sheet){ const n=await syncSheetGeneric(sheet, SheetRepo, ProductRepo); productStore.invalidate(); return n; }
+async function syncDatasetSheet(sheet){ const n=await syncSheetGeneric(sheet, DatasetSheetRepo, DatasetProductRepo); datasetStore.invalidate(); return n; }
+async function syncAll(){
+  const sheets=await SheetRepo.list();
+  if(!sheets.length){ toast('Chưa có Sheet nào để đồng bộ','warn'); return; }
+  let ok=0,total=0,fail=0;
+  for(const s of sheets){
+    try{ total+=await syncSheet(s); ok++; }
+    catch(e){ fail++; toast(`Lỗi đồng bộ "${s.name}": ${e.message}`,'err'); }
+  }
+  toast(`Đồng bộ xong: ${ok} Sheet, ${total} sản phẩm${fail?`, ${fail} lỗi`:''}`, fail?'warn':'ok');
+}
+async function syncAllDataset(){
+  const sheets=await DatasetSheetRepo.list();
+  if(!sheets.length){ toast('Chưa có Sheet Dataset nào để đồng bộ','warn'); return; }
+  let ok=0,total=0,fail=0;
+  for(const s of sheets){ try{ total+=await syncDatasetSheet(s); ok++; }catch(e){ fail++; toast(`Lỗi đồng bộ "${s.name}": ${e.message}`,'err'); } }
+  toast(`Đồng bộ Dataset xong: ${ok} Sheet, ${total} sản phẩm${fail?`, ${fail} lỗi`:''}`, fail?'warn':'ok');
+}
+
+/* ============================================================
+   6) EXPORT SERVICE — 2 mẫu ĐỘC LẬP (Search & Dataset), mỗi mẫu 9 cột
+   ============================================================ */
+function csvCell(v){ v=String(v==null?'':v); return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function downloadBlob(blob,name){ const u=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000); }
+function writeCSV(head,rows,name){ const lines=[head.join(',')]; rows.forEach(r=>lines.push(r.map(csvCell).join(','))); downloadBlob(new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),name); }
+function writeXLSX(head,rows,sheet,name){ const ws=XLSX.utils.aoa_to_sheet([head,...rows]); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheet); XLSX.writeFile(wb,name); }
+async function writeClipboard(head,rows){ const tsv=[head.join('\t'),...rows.map(r=>r.join('\t'))].join('\n'); await navigator.clipboard.writeText(tsv); }
+
+/* ---- MẪU 1: Export Search (chỉ dùng cho Tìm kiếm & Lọc) ---- */
+const SEARCH_HEAD=['Link Shopee','TÊN SẢN PHẨM','Link Rút Gọn','Sub ID 1','Sub ID 2','LINK VIDEO TIKTOK','LINK Fastmoss','ID VIDEO FB','DANH MỤC'];
+function searchRow(p){ return [p.link, p.name, p.shortlink||'', p.subid||'', p.subid2||'', p.tiktok||'', p.fastmoss||'', p.fbid||'', p.category]; }
+function searchExport(kind, items){
+  const rows=items.map(searchRow);
+  if(kind==='csv') writeCSV(SEARCH_HEAD,rows,'san-pham.csv');
+  else if(kind==='xlsx') writeXLSX(SEARCH_HEAD,rows,'San pham','san-pham.xlsx');
+  else return writeClipboard(SEARCH_HEAD,rows);
+}
+
+/* ---- MẪU 2: Export Dataset = template So9_Upload_Bulk (25 cột) ---- */
+const SO9_COLS=[
+  ['Content',30],['Channel',25],['Schedule',14],['Media Type',15],['Media Link',40],
+  ['Media Thumb',20],['Comment 1',25],['Schedule Comment 1',20],['Media Comment 1',30],
+  ['Comment 2',25],['Schedule Comment 2',20],['Media Comment 2',20],
+  ['Comment 3',25],['Schedule Comment 3',20],['Media Comment 3',20],
+  ['Comment 4',25],['Schedule Comment 4',20],['Media Comment 4',20],
+  ['Comment 5',25],['Schedule Comment 5',20],['Media Comment 5',20],
+  ['Pin Link',18],['Pin Title',18],['Youtube Title',18],['Tiktok Title',18]
+];
+const SCHEDULE_HEAD=SO9_COLS.map(c=>c[0]);
+function fmtSchedule(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getDate()}/${d.getMonth()+1}/${d.getFullYear()}_${p(d.getHours())}:${p(d.getMinutes())}`; }
+/* NGÀY LẤY định dạng YYYY-MM-DD HH:mm:ss */
+function fmtStamp(d){ const p=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`; }
+/* Gán Facebook (Channel/NGƯỜI LẤY) cho từng sản phẩm theo khối liên tiếp — dùng chung cho cả xuất file & ghi Sheet */
+function assignChannels(items, fbLines){
+  const A=fbLines?fbLines.length:0, N=(items||[]).length, chunk=A?Math.ceil(N/A):0;
+  return (items||[]).map((p,i)=> A ? fbLines[Math.min(A-1, Math.floor(i/chunk))] : '');
+}
+function so9Rows(items, fbLines, opts){
+  // Bộ dữ liệu (ds.items) ĐÃ được lọc điều kiện (có BÀI VIẾT + PAGE trống) ở bước Tạo bộ dữ liệu / Thêm sản phẩm.
+  // Vì vậy xuất đúng 1:1, KHÔNG lọc lại -> tổng số bài trong file = đúng số đã chọn/đã build.
+  items=(items||[]);
+  const channels=assignChannels(items, fbLines);
+  const start=opts.start||new Date(); const interval=Math.max(1,opts.interval||1); const mediaType=opts.mediaType||'video'; const schedMode=opts.schedMode||'gen';
+  return items.map((p,i)=>{
+    const content = (p.baiviet==null ? '' : String(p.baiviet));
+    const channel = channels[i] || '';
+    const sched = schedMode==='gen' ? fmtSchedule(new Date(start.getTime()+i*interval*60000)) : (p.schedule||'');
+    const row=[content, channel, sched, mediaType, p.medialink||''];
+    while(row.length<SO9_COLS.length) row.push('');
+    return row;
+  });
+}
+async function so9Xlsx(rows, fname){
+  const wb=new ExcelJS.Workbook(); const ws=wb.addWorksheet('MAIN SHEET');
+  ws.columns=SO9_COLS.map(c=>({header:c[0],width:c[1]}));
+  // Header: nền đen, chữ trắng đậm
+  ws.getRow(1).eachCell(c=>{ c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF000000'}}; c.font={bold:true,color:{argb:'FFFFFFFF'}}; c.alignment={vertical:'middle'}; });
+  rows.forEach(r=>{
+    const row=ws.addRow(r);
+    row.getCell(1).alignment={wrapText:true,vertical:'top'}; row.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+    row.getCell(2).alignment={wrapText:true,vertical:'top'}; row.getCell(2).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}};
+    row.getCell(5).alignment={wrapText:true,vertical:'top'}; row.getCell(5).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+  });
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname+'.xlsx'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+async function datasetExport(kind, items, fbLines, opts){
+  opts=opts||{}; const rows=so9Rows(items, fbLines, opts); const fname='So9_Upload_Bulk';
+  if(kind==='xlsx') return so9Xlsx(rows, fname);
+  if(kind==='csv') return writeCSV(SCHEDULE_HEAD,rows,fname+'.csv');
+  return writeClipboard(SCHEDULE_HEAD,rows);
+}
+
+/* GHI NGƯỢC trạng thái lên Google Sheet qua Apps Script Web App.
+   - Tự tạo cột TRẠNG THÁI / NGÀY LẤY / NGƯỜI LẤY nếu chưa có (phía Apps Script).
+   - Tìm dòng theo Link Shopee rồi cập nhật 3 cột; KHÔNG đụng dữ liệu khác.
+   items: sản phẩm đã xuất; takers: NGƯỜI LẤY (Selector) tương ứng từng item. */
+async function writeStatusBack(items, takers){
+  const url=(cfg.scriptUrl||'').trim();
+  if(!url) return {skipped:true};
+  let sheets=dsSheetsCache; if(!sheets||!sheets.length){ try{ sheets=await DatasetSheetRepo.list(); }catch(e){ sheets=[]; } }
+  const meta=new Map(sheets.map(s=>[s.id, parseUrlMeta(s.url)]));
+  const stamp=fmtStamp(new Date());
+  const groups=new Map();
+  items.forEach((p,i)=>{
+    const m=meta.get(p.source_sheet_id); if(!m||!m.sheet_id) return;
+    const key=m.sheet_id+'|'+(m.gid||'0');
+    if(!groups.has(key)) groups.set(key,{spreadsheetId:m.sheet_id, gid:m.gid||'0', linkHeader:cfg.cols.link, statusHeader:cfg.cols.status||'TRẠNG THÁI', dateHeader:'NGÀY LẤY', takerHeader:'NGƯỜI LẤY', rows:[]});
+    groups.get(key).rows.push({link:p.link, date:stamp, taker:(takers&&takers[i])||''});
+  });
+  const payload={groups:[...groups.values()]};
+  if(!payload.groups.length) return {skipped:true};
+  const res=await fetch(url,{method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify(payload)});
+  let out=null; try{ out=await res.json(); }catch(e){}
+  if(out && out.ok===false) throw new Error(out.error||'Apps Script báo lỗi');
+  return out||{ok:true};
+}
+
+/* ============================================================
+   7) UI STATE + ROUTER
+   ============================================================ */
+const state={ page:1, pageSize:50, total:0, sort:'new', keyword:'', category:'', subid:'', sheetId:'', selected:new Map() };
+let autoTimer=null;
+
+const VIEW_TITLES={ products:'Tìm & lọc sản phẩm', dataset:'Dataset Builder', dashboard:'Dashboard', sheets:'Thêm Sheet Dataset', dssheets:'TK Affiliate', accsheets:'Thêm Facebook', history:'Lịch sử tải', settings:'Cài đặt' };
+function go(view){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  $('#view-'+view).classList.add('active');
+  $('#topbarTitle').textContent = VIEW_TITLES[view] || 'Product Hub';
+  if(!supa && view!=='settings'){ $('#banner').innerHTML='<div class="banner">Chưa kết nối Supabase. Vào <b>Cài đặt</b> để nhập Project URL và anon key.</div>'; }
+  else $('#banner').innerHTML='';
+  if(!supa) return;
+  if(view==='dashboard')renderDashboard();
+  if(view==='sheets')renderSheets();
+  if(view==='dssheets')renderDsSheets();
+  if(view==='accsheets')renderAccSheets();
+  if(view==='products')renderProducts();
+  if(view==='dataset')renderDataset();
+  if(view==='history')renderHistory();
+}
+function openDrawer(){ $('#drawer').classList.add('open'); $('#overlay').classList.add('show'); }
+function closeDrawer(){ $('#drawer').classList.remove('open'); $('#overlay').classList.remove('show'); }
+$('#hambBtn').onclick=openDrawer;
+$('#overlay').onclick=closeDrawer;
+document.querySelectorAll('.nav-item').forEach(b=>b.onclick=()=>{ go(b.dataset.view); closeDrawer(); });
+
+/* ---------- DASHBOARD ---------- */
+async function renderDashboard(){
+  try{
+    const [sheets,total,avail,hist]=await Promise.all([SheetRepo.list(),ProductRepo.total(),ProductRepo.available(),HistoryRepo.count()]);
+    $('#statCards').innerHTML=[
+      ['Google Sheets',sheets.length],['Tổng sản phẩm',total],['Còn lại (chưa tải)',avail],['Đã tải',hist]
+    ].map(([l,n])=>`<div class="stat"><div class="n">${n.toLocaleString('vi-VN')}</div><div class="l">${l}</div></div>`).join('');
+    const last=sheets.filter(s=>s.last_synced_at).sort((a,b)=>new Date(b.last_synced_at)-new Date(a.last_synced_at))[0];
+    $('#dashSync').innerHTML = sheets.length? `Lần đồng bộ gần nhất: <b>${last?fmtTime(last.last_synced_at):'chưa có'}</b>` : 'Chưa có Sheet nào. Vào mục <b>Google Sheets</b> để thêm.';
+  }catch(e){ toast('Lỗi tải dashboard: '+e.message,'err'); }
+}
+
+/* ---------- SHEETS ---------- */
+async function renderSheets(){
+  try{
+    const sheets=await SheetRepo.list();
+    $('#sheetList').innerHTML = sheets.length? sheets.map(s=>`
+      <div class="sheet-item" data-id="${s.id}">
+        <div class="meta">
+          <div class="nm">${esc(s.name)}</div>
+          <div class="sub">${esc(s.url)}</div>
+        </div>
+        <span class="badge ${s.status==='active'?'ok':s.status==='error'?'err':s.status==='syncing'?'warn':''}">${s.status==='syncing'?'<span class="spin"></span> đang đồng bộ':s.status}</span>
+        <span class="badge">${(s.product_count||0).toLocaleString('vi-VN')} sp</span>
+        <span class="muted" style="font-size:12px">${s.last_synced_at?fmtTime(s.last_synced_at):'chưa đồng bộ'}</span>
+        <button class="btn btn-sm" data-act="sync">Đồng bộ</button>
+        <button class="btn btn-sm" data-act="edit">Sửa</button>
+        <button class="btn btn-sm btn-danger" data-act="del">Xoá</button>
+      </div>`).join('') : '<div class="empty"><div class="big">Chưa có Sheet nào</div>Thêm Google Sheet ở khung phía trên.</div>';
+    $('#sheetList').querySelectorAll('.sheet-item').forEach(el=>{
+      const id=el.dataset.id; const s=sheets.find(x=>x.id===id);
+      el.querySelector('[data-act=sync]').onclick=async()=>{ try{ const n=await syncSheet(s); toast(`Đã đồng bộ "${s.name}": ${n} sản phẩm`,'ok'); renderSheets(); }catch(e){ toast('Lỗi: '+e.message,'err'); renderSheets(); } };
+      el.querySelector('[data-act=edit]').onclick=async()=>{
+        const name=prompt('Tên Sheet:',s.name); if(name===null)return;
+        const url=prompt('Link Sheet:',s.url); if(url===null)return;
+        try{ await SheetRepo.update(id,{name:name.trim(),url:url.trim(),...parseUrlMeta(url)}); toast('Đã cập nhật','ok'); renderSheets(); }catch(e){ toast('Lỗi: '+e.message,'err'); }
+      };
+      el.querySelector('[data-act=del]').onclick=async()=>{ if(!confirm(`Xoá Sheet "${s.name}" và toàn bộ sản phẩm của nó?`))return; try{ await SheetRepo.remove(id); productStore.invalidate(); toast('Đã xoá','ok'); renderSheets(); }catch(e){ toast('Lỗi: '+e.message,'err'); } };
+    });
+  }catch(e){ toast('Lỗi tải danh sách Sheet: '+e.message,'err'); }
+}
+$('#addSheetBtn').onclick=async()=>{
+  const name=$('#newSheetName').value.trim(), url=$('#newSheetUrl').value.trim();
+  if(!name||!url){ toast('Nhập tên và link Sheet','warn'); return; }
+  try{ const meta=parseUrlMeta(url); const s=await SheetRepo.add({name,url,...meta,status:'idle'}); $('#newSheetName').value='';$('#newSheetUrl').value='';
+    toast('Đã thêm. Đang đồng bộ…','ok'); renderSheets();
+    try{ const n=await syncSheet(s); toast(`Đồng bộ xong: ${n} sản phẩm`,'ok'); }catch(e){ toast('Thêm xong nhưng đồng bộ lỗi: '+e.message,'warn'); }
+    renderSheets();
+  }catch(e){ toast('Lỗi thêm Sheet: '+e.message,'err'); }
+};
+$('#syncAllBtn').onclick=async()=>{ await syncAll(); renderSheets(); };
+$('#dashSyncAll').onclick=async()=>{ await syncAll(); renderDashboard(); };
+
+/* ---- Trang Thêm Sheet Dataset ---- */
+async function renderDsSheets(){
+  try{
+    const sheets=await DatasetSheetRepo.list();
+    $('#dsSheetList').innerHTML = sheets.length? sheets.map(s=>`
+      <div class="sheet-item" data-id="${s.id}">
+        <div class="meta"><div class="nm">${esc(s.name)}</div><div class="sub">${esc(s.url)}</div></div>
+        <span class="badge ${s.status==='active'?'ok':s.status==='error'?'err':s.status==='syncing'?'warn':''}">${s.status==='syncing'?'<span class="spin"></span> đang đồng bộ':s.status}</span>
+        <span class="badge">${(s.product_count||0).toLocaleString('vi-VN')} sp</span>
+        <span class="muted" style="font-size:12px">${s.last_synced_at?fmtTime(s.last_synced_at):'chưa đồng bộ'}</span>
+        <button class="btn btn-sm" data-act="sync">Đồng bộ</button>
+        <button class="btn btn-sm" data-act="edit">Sửa</button>
+        <button class="btn btn-sm btn-danger" data-act="del">Xoá</button>
+      </div>`).join('') : '<div class="empty"><div class="big">Chưa có Sheet Dataset nào</div>Thêm ở khung phía trên.</div>';
+    $('#dsSheetList').querySelectorAll('.sheet-item').forEach(el=>{
+      const id=el.dataset.id; const s=sheets.find(x=>x.id===id);
+      el.querySelector('[data-act=sync]').onclick=async()=>{ try{ const n=await syncDatasetSheet(s); toast(`Đã đồng bộ "${s.name}": ${n} sản phẩm`,'ok'); renderDsSheets(); }catch(e){ toast('Lỗi: '+e.message,'err'); renderDsSheets(); } };
+      el.querySelector('[data-act=edit]').onclick=async()=>{ const name=prompt('Tên Sheet:',s.name); if(name===null)return; const url=prompt('Link Sheet:',s.url); if(url===null)return; try{ await DatasetSheetRepo.update(id,{name:name.trim(),url:url.trim()}); toast('Đã cập nhật','ok'); renderDsSheets(); }catch(e){ toast('Lỗi: '+e.message,'err'); } };
+      el.querySelector('[data-act=del]').onclick=async()=>{ if(!confirm(`Xoá Sheet Dataset "${s.name}" và toàn bộ sản phẩm của nó?`))return; try{ await DatasetSheetRepo.remove(id); datasetStore.invalidate(); toast('Đã xoá','ok'); renderDsSheets(); }catch(e){ toast('Lỗi: '+e.message,'err'); } };
+    });
+  }catch(e){ toast('Lỗi tải danh sách Sheet Dataset: '+e.message,'err'); }
+}
+$('#addDsBtn').onclick=async()=>{
+  const name=$('#newDsName').value.trim(), url=$('#newDsUrl').value.trim();
+  if(!name||!url){ toast('Nhập tên và link Sheet','warn'); return; }
+  try{ const s=await DatasetSheetRepo.add({name,url,status:'idle'}); $('#newDsName').value='';$('#newDsUrl').value='';
+    toast('Đã thêm. Đang đồng bộ…','ok'); renderDsSheets();
+    try{ const n=await syncDatasetSheet(s); toast(`Đồng bộ xong: ${n} sản phẩm`,'ok'); }catch(e){ toast('Thêm xong nhưng đồng bộ lỗi: '+e.message,'warn'); }
+    renderDsSheets();
+  }catch(e){ toast('Lỗi thêm Sheet: '+e.message,'err'); }
+};
+$('#dsSyncAllBtn').onclick=async()=>{ await syncAllDataset(); renderDsSheets(); };
+$('#dsCheckColsBtn').onclick=async()=>{
+  const box=$('#dsColCheck'); box.style.display='block'; box.innerHTML='<div class="muted" style="padding:10px"><span class="spin"></span> Đang đọc cột từ các Sheet…</div>';
+  try{
+    const sheets=await DatasetSheetRepo.list();
+    if(!sheets.length){ box.innerHTML='<div class="muted" style="padding:10px">Chưa có Sheet nào.</div>'; return; }
+    const fields=[['baiviet','BÀI VIẾT → Content (phải có)'],['page','PAGE (phải TRỐNG mới lấy)'],['medialink','Link Drive → Media Link'],['name','Tên SP'],['link','Link'],['category','Danh mục'],['schedule','Schedule']];
+    let html='';
+    for(const s of sheets){
+      try{
+        const text=await fetchSheetCsv(s.url); const rows=parseCSV(text);
+        const rawHead=(rows[0]||[]).map(h=>String(h).trim());
+        const headN=rawHead.map(normHeader); const ix=k=>headN.indexOf(normHeader(cfg.cols[k]));
+        const sample=k=>{ const i=ix(k); if(i<0)return null; for(let r=1;r<rows.length;r++){ const val=(rows[r][i]||'').trim(); if(val) return val; } return ''; };
+        // Đếm điều kiện
+        const bi=ix('baiviet'), pi=ix('page'), li=ix('link'); let nBai=0,nPageEmpty=0,nBoth=0,nTotal=0;
+        for(let r=1;r<rows.length;r++){ const row=rows[r]; const hasLink=li<0?true:(row[li]||'').trim()!==''; if(!hasLink)continue; nTotal++;
+          const hasBai = bi>=0 && (row[bi]||'').trim()!==''; const pageEmpty = pi<0 ? true : (row[pi]||'').trim()==='';
+          if(hasBai)nBai++; if(pageEmpty)nPageEmpty++; if(hasBai&&pageEmpty)nBoth++; }
+        html+=`<div class="card" style="padding:12px;margin-bottom:10px;border:1px solid var(--line)">
+          <div style="font-weight:700;margin-bottom:6px">${esc(s.name)}</div>
+          <div class="muted" style="font-size:12px;margin-bottom:8px">Cột trong Sheet: ${rawHead.map(h=>esc(h)).join(' · ')||'(không đọc được)'}</div>
+          <div style="font-size:12.5px;margin:6px 0;padding:8px;border-radius:8px;background:rgba(255,255,255,.04)">
+            Tổng SP: <b>${nTotal}</b> · có BÀI VIẾT: <b>${nBai}</b> · PAGE trống: <b>${nPageEmpty}</b> · <b style="color:${nBoth?'#34d399':'#f87171'}">đủ điều kiện (BÀI VIẾT có + PAGE trống): ${nBoth}</b>
+          </div>
+          ${fields.map(([k,label])=>{ const i=ix(k); const ok=i>=0; const sv=ok?sample(k):null; const svShow=sv==null?'':(sv.length>70?esc(sv.slice(0,70))+'…':esc(sv));
+            return `<div style="font-size:12.5px;margin:3px 0">${ok?'✅':'❌'} <b>${esc(label)}</b> (tìm "${esc(cfg.cols[k])}"): ${ok?`cột #${i+1} — ví dụ: <span class="muted">${svShow||'(trống)'}</span>`:'<span style="color:#f87171">KHÔNG TÌM THẤY CỘT</span>'}</div>`; }).join('')}
+        </div>`;
+      }catch(e){ html+=`<div class="card" style="padding:12px;margin-bottom:10px"><b>${esc(s.name)}</b><div style="color:#f87171;font-size:12.5px">Lỗi đọc: ${esc(e.message)}</div></div>`; }
+    }
+    box.innerHTML=html;
+  }catch(e){ box.innerHTML='<div style="color:#f87171;padding:10px">Lỗi: '+esc(e.message)+'</div>'; }
+};
+
+/* ---------- PRODUCTS ---------- */
+async function refreshFilters(){
+  try{
+    const [cats,subs,sheets]=await Promise.all([ProductRepo.distinct('category'),ProductRepo.distinct('subid'),SheetRepo.list()]);
+    const fill=(sel,arr,vmap)=>{ const cur=sel.value; sel.innerHTML=sel.options[0].outerHTML+arr.map(vmap).join(''); sel.value=cur; };
+    fill($('#fCategory'),cats,c=>`<option value="${esc(c)}">${esc(c)}</option>`);
+    fill($('#fSubid'),subs,c=>`<option value="${esc(c)}">${esc(c)}</option>`);
+    const cur=$('#fSheet').value; $('#fSheet').innerHTML='<option value="">— Tất cả Sheet nguồn —</option>'+sheets.map(s=>`<option value="${s.id}">${esc(s.name)}</option>`).join(''); $('#fSheet').value=cur;
+  }catch(e){}
+}
+async function renderProducts(){
+  await refreshFilters();
+  try{
+    const {rows,total}=await ProductRepo.query({keyword:state.keyword,category:state.category,subid:state.subid,sheetId:state.sheetId,sort:state.sort,page:state.page,pageSize:state.pageSize});
+    state.total=total;
+    const tb=$('#prodBody');
+    if(!rows.length){ tb.innerHTML='<tr><td colspan="6"><div class="empty"><div class="big">Không có sản phẩm</div>Không tìm thấy, hoặc tất cả đã được tải trước đó.</div></td></tr>'; }
+    else tb.innerHTML=rows.map(p=>`
+      <tr data-id="${p.id}">
+        <td><input type="checkbox" class="rowchk" ${state.selected.has(p.id)?'checked':''}></td>
+        <td class="name">${esc(p.name)}</td>
+        <td>${esc(p.category)}</td>
+        <td><span class="badge">${esc(p.subid)||'—'}</span></td>
+        <td class="muted">${esc(p.sheet_name)||'—'}</td>
+        <td class="linkcell">${p.link?`<a href="${esc(p.link)}" target="_blank" rel="noopener">Mở ↗</a>`:'—'}</td>
+      </tr>`).join('');
+    // store rows for selection
+    rows.forEach(p=>rowCache.set(p.id,p));
+    tb.querySelectorAll('.rowchk').forEach((cb,i)=>{ const id=tb.querySelectorAll('tr')[i].dataset.id;
+      cb.onchange=()=>{ if(cb.checked)state.selected.set(id,rowCache.get(id)); else state.selected.delete(id); updateSelBar(); };
+    });
+    const pages=Math.max(1,Math.ceil(total/state.pageSize));
+    $('#pageInfo').textContent=`${total.toLocaleString('vi-VN')} sản phẩm · trang ${state.page}/${pages}`;
+    $('#prevPage').disabled=state.page<=1; $('#nextPage').disabled=state.page>=pages;
+    $('#checkAll').checked=false;
+    updateSelBar();
+  }catch(e){ $('#prodBody').innerHTML=`<tr><td colspan="6"><div class="empty"><div class="big">Lỗi tải dữ liệu</div>${esc(e.message)}</div></td></tr>`; }
+}
+const rowCache=new Map();
+function updateSelBar(){ const n=state.selected.size; $('#selBar').style.display=n?'flex':'none'; $('#selCount').textContent=n; }
+let searchTimer=null;
+$('#searchBox').addEventListener('input',e=>{ clearTimeout(searchTimer); searchTimer=setTimeout(()=>{ state.keyword=e.target.value; state.page=1; renderProducts(); },280); });
+$('#sortSel').onchange=e=>{ state.sort=e.target.value; state.page=1; renderProducts(); };
+$('#fCategory').onchange=e=>{ state.category=e.target.value; state.page=1; renderProducts(); };
+$('#fSubid').onchange=e=>{ state.subid=e.target.value; state.page=1; renderProducts(); };
+$('#fSheet').onchange=e=>{ state.sheetId=e.target.value; state.page=1; renderProducts(); };
+$('#prevPage').onclick=()=>{ if(state.page>1){state.page--;renderProducts();} };
+$('#nextPage').onclick=()=>{ state.page++; renderProducts(); };
+$('#checkAll').onchange=e=>{ document.querySelectorAll('#prodBody tr').forEach(tr=>{ const id=tr.dataset.id; if(!id)return; const cb=tr.querySelector('.rowchk'); if(cb){cb.checked=e.target.checked; if(e.target.checked)state.selected.set(id,rowCache.get(id)); else state.selected.delete(id);} }); updateSelBar(); };
+$('#selPage').onclick=()=>{ $('#checkAll').checked=true; $('#checkAll').onchange({target:{checked:true}}); };
+$('#selClear').onclick=()=>{ state.selected.clear(); renderProducts(); };
+$('#dlPick').onclick=async()=>{
+  const n=parseInt($('#dlQty').value||'0',10);
+  if(!n||n<1){ toast('Nhập số lượng cần tải','warn'); return; }
+  const btn=$('#dlPick'); btn.disabled=true; $('#dlHint').innerHTML='<span class="spin"></span> Đang chọn…';
+  try{
+    const rows=await ProductRepo.pickN({keyword:state.keyword,category:state.category,subid:state.subid,sheetId:state.sheetId,sort:state.sort}, n);
+    state.selected.clear(); rows.forEach(p=>state.selected.set(p.id,p));
+    renderProducts();
+    if(rows.length<n) $('#dlHint').textContent=`Chỉ còn ${rows.length} sản phẩm khớp (đã tích hết). Bấm CSV/Excel/Copy để tải.`;
+    else $('#dlHint').textContent=`Đã tích ${rows.length} sản phẩm. Bấm CSV/Excel/Copy để tải.`;
+    toast(`Đã tích ${rows.length} sản phẩm — bấm CSV/Excel/Copy để tải`, rows.length<n?'warn':'ok');
+  }catch(e){ toast('Lỗi chọn số lượng: '+e.message,'err'); $('#dlHint').textContent=''; }
+  finally{ btn.disabled=false; }
+};
+
+async function doExport(kind){
+  const items=[...state.selected.values()];
+  if(!items.length){ toast('Chưa chọn sản phẩm nào','warn'); return; }
+  try{
+    await searchExport(kind, items);
+    if(kind==='copy') toast('Đã copy vào clipboard','ok');
+    await HistoryRepo.add(items);
+    const n=items.length;
+    state.selected.clear();
+    productStore.invalidate();
+    toast(`Đã xuất ${n} sản phẩm và lưu vào lịch sử (sẽ không hiện lại)`,'ok');
+    renderProducts();
+  }catch(e){ toast('Lỗi xuất/lưu: '+e.message,'err'); }
+}
+$('#expCsv').onclick=()=>doExport('csv');
+$('#expXlsx').onclick=()=>doExport('xlsx');
+$('#expCopy').onclick=()=>doExport('copy');
+
+/* ---------- HISTORY ---------- */
+async function renderHistory(){
+  try{
+    const rows=await HistoryRepo.list();
+    $('#histCount').textContent=`${rows.length.toLocaleString('vi-VN')} link đã tải`;
+    $('#histBody').innerHTML = rows.length? rows.map(h=>`<tr>
+      <td class="name">${esc(h.name)}</td><td>${esc(h.category)}</td><td><span class="badge">${esc(h.subid)||'—'}</span></td>
+      <td class="linkcell">${h.link?`<a href="${esc(h.link)}" target="_blank" rel="noopener">Mở ↗</a>`:'—'}</td>
+      <td class="muted">${fmtTime(h.downloaded_at)}</td></tr>`).join('') : '<tr><td colspan="5"><div class="empty"><div class="big">Chưa tải sản phẩm nào</div></div></td></tr>';
+  }catch(e){ toast('Lỗi tải lịch sử: '+e.message,'err'); }
+}
+$('#clearHist').onclick=async()=>{ if(!confirm('Xoá toàn bộ lịch sử tải? Sau đó các sản phẩm đã tải sẽ hiện lại.'))return; try{ await HistoryRepo.clear(); productStore.invalidate(); datasetStore.invalidate(); toast('Đã xoá lịch sử','ok'); renderHistory(); }catch(e){ toast('Lỗi: '+e.message,'err'); } };
+
+/* ---------- SETTINGS ---------- */
+function fillSettings(){
+  $('#setUrl').value=cfg.url; $('#setKey').value=cfg.key; $('#setScript').value=cfg.scriptUrl||''; $('#setAuto').value=cfg.autoMin||0;
+  $('#colLink').value=cfg.cols.link; $('#colName').value=cfg.cols.name; $('#colShort').value=cfg.cols.shortlink; $('#colSub').value=cfg.cols.subid; $('#colSub2').value=cfg.cols.subid2; $('#colTik').value=cfg.cols.tiktok; $('#colFm').value=cfg.cols.fastmoss; $('#colFb').value=cfg.cols.fbid; $('#colCat').value=cfg.cols.category; $('#colBaiviet').value=cfg.cols.baiviet||'BÀI VIẾT'; $('#colMedia').value=cfg.cols.medialink||'Link Drive'; $('#colSchedule').value=cfg.cols.schedule||'Ngày'; $('#colPage').value=cfg.cols.page||'PAGE'; $('#colStatus').value=cfg.cols.status||'TRẠNG THÁI';
+}
+/* ---- Khoá kết nối bằng mật khẩu (SHA-256) ---- */
+async function sha256hex(s){ const buf=await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)); return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join(''); }
+function setConnLocked(locked){
+  $('#connFields').style.display=locked?'none':'';   // ẩn 2 ô URL/key khi đang khoá
+  $('#saveConn').style.display=locked?'none':'';
+  $('#unlockConn').style.display=locked?'':'none';
+  $('#resetConn').style.display=locked?'none':'';
+}
+$('#unlockConn').onclick=async()=>{
+  const pw=prompt('Nhập mật khẩu để đổi kết nối:'); if(pw===null)return;
+  try{ const h=await sha256hex(pw);
+    if(h===ADMIN_HASH){ setConnLocked(false); $('#setUrl').focus(); toast('Đã mở khoá — có thể sửa & lưu kết nối','ok'); }
+    else toast('Sai mật khẩu','err');
+  }catch(e){ toast('Cần mở trang qua http/https (vd GitHub Pages) để kiểm tra mật khẩu','err'); }
+};
+$('#resetConn').onclick=()=>{
+  cfg.url=BAKED_URL; cfg.key=BAKED_KEY; saveCfg(cfg); initClient(); fillSettings(); setConnLocked(true);
+  $('#connMsg').innerHTML='<span style="color:var(--ok)">Đã khôi phục kết nối mặc định ✓</span>';
+  toast('Đã khôi phục kết nối mặc định','ok'); setupAuto();
+};
+$('#saveConn').onclick=async()=>{
+  cfg.url=$('#setUrl').value.trim(); cfg.key=$('#setKey').value.trim(); cfg.scriptUrl=$('#setScript').value.trim(); saveCfg(cfg); initClient();
+  if(!supa){ $('#connMsg').innerHTML='<span style="color:var(--err)">Thiếu URL hoặc key</span>'; return; }
+  try{ await SheetRepo.list(); $('#connMsg').innerHTML='<span style="color:var(--ok)">Kết nối thành công ✓</span>'; toast('Đã kết nối Supabase','ok'); setConnLocked(true); setupAuto(); }
+  catch(e){ $('#connMsg').innerHTML='<span style="color:var(--err)">Lỗi: '+esc(e.message)+'</span>'; }
+};
+$('#saveCols').onclick=()=>{ cfg.cols={ link:$('#colLink').value.trim(), name:$('#colName').value.trim(), shortlink:$('#colShort').value.trim(), subid:$('#colSub').value.trim(), subid2:$('#colSub2').value.trim(), tiktok:$('#colTik').value.trim(), fastmoss:$('#colFm').value.trim(), fbid:$('#colFb').value.trim(), category:$('#colCat').value.trim(), baiviet:$('#colBaiviet').value.trim(), medialink:$('#colMedia').value.trim(), schedule:$('#colSchedule').value.trim(), page:$('#colPage').value.trim(), status:$('#colStatus').value.trim()||'TRẠNG THÁI' }; saveCfg(cfg); productStore.invalidate(); datasetStore.invalidate(); toast('Đã lưu tên cột','ok'); };
+$('#saveAuto').onclick=()=>{ cfg.autoMin=Math.max(0,parseInt($('#setAuto').value||'0',10)); saveCfg(cfg); setupAuto(); toast(cfg.autoMin?`Tự đồng bộ mỗi ${cfg.autoMin} phút`:'Đã tắt tự đồng bộ','ok'); };
+function setupAuto(){ if(autoTimer){clearInterval(autoTimer);autoTimer=null;} if(supa && cfg.autoMin>0){ autoTimer=setInterval(()=>{ syncAll().then(()=>{ if($('#view-dashboard').classList.contains('active'))renderDashboard(); }); }, cfg.autoMin*60000); } }
+
+/* ============================================================
+   7b) DATASET BUILDER
+   ============================================================ */
+const ds={ items:new Map(), search:'' };
+let dsCats=[];
+function dsOcOn(){ return true; }
+async function loadDsCats(){ try{ dsCats=await DatasetProductRepo.distinctCats([...dsSel]); }catch(e){ dsCats=[]; toast('Lỗi đọc danh mục Dataset: '+e.message,'err'); } }
+async function dsCountCat(cat){ return DatasetProductRepo.countCat(cat,[...dsSel]); }
+async function dsFetchCat(cat,mode,cap=8000){ return DatasetProductRepo.fetchCat(cat,[...dsSel],mode,cap); }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function dsRowHTML(cat='',count=''){
+  return `<div class="row dscfg" style="margin-bottom:9px;align-items:center">
+    <select class="grow dscat"><option value="">— Chọn danh mục —</option>${dsCats.map(c=>`<option value="${esc(c)}" ${c===cat?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <input type="number" min="1" class="dscount" placeholder="Số lượng" value="${count}" style="max-width:140px">
+    <span class="badge dsavail" style="min-width:110px;text-align:center">hiện có: —</span>
+    <button class="btn btn-sm btn-danger dsrm">✕</button></div>`;
+}
+function bindDsRow(row){
+  const sel=row.querySelector('.dscat'), cnt=row.querySelector('.dscount'), av=row.querySelector('.dsavail');
+  sel.onchange=async()=>{ if(sel.value){ av.textContent='hiện có: …'; const n=await dsCountCat(sel.value); av.textContent='hiện có: '+n.toLocaleString('vi-VN'); } else av.textContent='hiện có: —'; recalcDsSummary(); };
+  cnt.oninput=recalcDsSummary;
+  row.querySelector('.dsrm').onclick=()=>{ row.remove(); recalcDsSummary(); };
+}
+function readDsConfigs(){ return [...document.querySelectorAll('.dscfg')].map(r=>({category:r.querySelector('.dscat').value,count:parseInt(r.querySelector('.dscount').value||'0',10)})).filter(c=>c.category&&c.count>0); }
+function recalcDsSummary(){ const c=readDsConfigs(); const t=c.reduce((s,x)=>s+x.count,0); $('#dsSummary').innerHTML = c.length? `Sẽ tạo bộ dữ liệu gồm <b>${t.toLocaleString('vi-VN')}</b> sản phẩm từ ${c.length} danh mục.` : 'Chọn danh mục và nhập số lượng.'; }
+$('#dsAddRow').onclick=()=>{ const w=$('#dsConfigRows'); w.insertAdjacentHTML('beforeend',dsRowHTML()); bindDsRow(w.lastElementChild); };
+
+$('#dsBuild').onclick=async()=>{
+  if(!dsSel.size){ toast('Hãy chọn ít nhất 1 Sheet ở mục Nguồn dữ liệu','warn'); return; }
+  const cfgs=readDsConfigs();
+  if(!cfgs.length){ toast('Hãy chọn ít nhất một danh mục và số lượng','warn'); return; }
+  $('#dsBuild').disabled=true; $('#dsSummary').innerHTML='<span class="spin"></span> Đang tạo bộ dữ liệu…';
+  try{
+    const mode=$('#dsMode').value; const chosen=new Set(); ds.items.clear(); const report=[];
+    for(const {category,count} of cfgs){
+      let pool=await dsFetchCat(category,mode); const seen=new Set();
+      pool=pool.filter(p=>{ if(!p.link||chosen.has(p.link)||seen.has(p.link))return false; seen.add(p.link); return true; });
+      if(mode==='random') shuffle(pool);
+      const take=pool.slice(0,count);
+      take.forEach(p=>{ chosen.add(p.link); ds.items.set(p.id,p); });
+      report.push({category,requested:count,got:take.length,short:count-take.length});
+    }
+    renderDsResult();
+    const shorts=report.filter(r=>r.short>0);
+    let msg=`Đã tạo bộ dữ liệu: <b>${ds.items.size.toLocaleString('vi-VN')}</b> sản phẩm.`;
+    if(shorts.length) msg+=' Thiếu: '+shorts.map(r=>`${esc(r.category)} (còn thiếu ${r.short})`).join(', ');
+    $('#dsSummary').innerHTML=msg;
+    toast(shorts.length?'Tạo xong — một số danh mục chưa đủ số lượng':'Đã tạo bộ dữ liệu', shorts.length?'warn':'ok');
+  }catch(e){ toast('Lỗi tạo bộ dữ liệu: '+e.message,'err'); $('#dsSummary').textContent=''; }
+  finally{ $('#dsBuild').disabled=false; }
+};
+
+function renderDsResult(){
+  $('#dsResultCard').style.display = ds.items.size? 'block':'none';
+  $('#dsCount').textContent = ds.items.size;
+  const kw=ds.search.trim().toLowerCase();
+  const items=[...ds.items.values()].filter(p=>!kw||p.name.toLowerCase().includes(kw)||(p.category||'').toLowerCase().includes(kw)||(p.subid||'').toLowerCase().includes(kw));
+  const tb=$('#dsBody');
+  tb.innerHTML = items.length? items.map(p=>`<tr data-id="${esc(p.id)}">
+    <td class="name">${esc(p.name)}</td><td>${esc(p.category)}</td><td><span class="badge">${esc(p.subid)||'—'}</span></td>
+    <td class="linkcell">${p.link?`<a href="${esc(p.link)}" target="_blank" rel="noopener">Mở ↗</a>`:'—'}</td>
+    <td><button class="btn btn-sm btn-danger dsdel">Bỏ</button></td></tr>`).join('') : '<tr><td colspan="5"><div class="empty"><div class="big">Không có sản phẩm khớp</div></div></td></tr>';
+  tb.querySelectorAll('tr').forEach(tr=>{ const del=tr.querySelector('.dsdel'); if(del) del.onclick=()=>{ ds.items.delete(tr.dataset.id); renderDsResult(); }; });
+}
+$('#dsSearch').addEventListener('input',e=>{ ds.search=e.target.value; renderDsResult(); });
+
+let dsAddTimer=null;
+$('#dsAddSearch').addEventListener('input',e=>{
+  clearTimeout(dsAddTimer); const kw=e.target.value.trim();
+  if(!kw){ $('#dsAddResults').innerHTML=''; return; }
+  dsAddTimer=setTimeout(async()=>{
+    try{
+      const rows=await DatasetProductRepo.search(kw,[...dsSel],8);
+      $('#dsAddResults').innerHTML = rows.length? `<div class="card" style="padding:6px">${rows.map(p=>`<div class="row dsaddopt" data-id="${esc(p.id)}" style="padding:7px 8px;cursor:pointer;border-radius:6px"><span class="grow" style="font-size:13px">${esc(p.name)} <span class="muted">· ${esc(p.category)}</span></span><span class="badge">+ Thêm</span></div>`).join('')}</div>` : '<div class="card" style="padding:10px" class="muted">Không tìm thấy (hoặc đã tải hết)</div>';
+      $('#dsAddResults').querySelectorAll('.dsaddopt').forEach(el=>{ el.onclick=()=>{ const p=rows.find(x=>x.id===el.dataset.id); if(p){ if([...ds.items.values()].some(x=>x.link===p.link)) toast('Sản phẩm (link) đã có trong bộ dữ liệu','warn'); else { ds.items.set(p.id,p); renderDsResult(); } } $('#dsAddSearch').value=''; $('#dsAddResults').innerHTML=''; }; });
+    }catch(err){ toast('Lỗi tìm sản phẩm: '+err.message,'err'); }
+  },280);
+});
+
+async function dsExport(kind){
+  const items=[...ds.items.values()];
+  if(!items.length){ toast('Bộ dữ liệu trống','warn'); return; }
+  const fbLines = selectedFbLines();
+  const takers = assignChannels(items, fbLines);   // NGƯỜI LẤY của từng sản phẩm (nguyên văn Selector)
+  // Schedule tự sinh mặc định: bắt đầu từ bây giờ, mỗi bài cách 1 phút, Media Type = video
+  const opts={ start:new Date(), interval:1, contentMode:'raw', mediaType:'video', schedMode:'gen' };
+  try{
+    await datasetExport(kind, items, fbLines, opts);
+    if(kind==='copy') toast('Đã copy','ok');
+    // 1) Ghi ngược TRẠNG THÁI/NGÀY LẤY/NGƯỜI LẤY lên Google Sheet
+    let sheetOK=false;
+    try{ const r=await writeStatusBack(items, takers); if(r && !r.skipped){ sheetOK=true; toast('Đã cập nhật ĐÃ LẤY lên Google Sheet','ok'); } }
+    catch(e){ toast('Xuất xong nhưng cập nhật Google Sheet lỗi: '+e.message,'warn'); }
+    // 2) Đánh dấu ĐÃ LẤY ngay trên Supabase để ẩn liền (không cần chờ đồng bộ lại)
+    try{ await DatasetProductRepo.markTaken(items.map(p=>p.link)); }catch(e){}
+    // 3) Nếu chưa cấu hình/ghi được Sheet -> giữ ẩn bằng lịch sử tải như cũ
+    if(!sheetOK){ try{ await HistoryRepo.add(items); }catch(e){} }
+    datasetStore.invalidate(); productStore.invalidate();
+    toast(`Đã xuất ${items.length} bài${fbLines.length?` · ${fbLines.length} Facebook`:''}`,'ok');
+    ds.items.clear(); renderDsResult(); $('#dsSummary').textContent='';
+    document.querySelectorAll('.dscfg .dscat').forEach(s=>{ if(s.value && s.onchange) s.onchange(); });
+  }catch(e){ toast('Lỗi xuất/lưu: '+e.message,'err'); }
+}
+$('#dsCsv').onclick=()=>dsExport('csv');
+$('#dsXlsx').onclick=()=>dsExport('xlsx');
+$('#dsCopy').onclick=()=>dsExport('copy');
+
+async function renderDataset(){
+  await initDsExtras();
+  await loadDsCats();
+  const w=$('#dsConfigRows');
+  if(!w.children.length){ w.innerHTML=dsRowHTML(); bindDsRow(w.firstElementChild); }
+  else refreshDsCatOptions();
+  recalcDsSummary();
+  renderDsResult();
+}
+
+/* ============================================================
+   7c) ACCOUNT SHEETS (độc lập với products)
+   ============================================================ */
+const ACCOUNT_COLS={ id:'ID', platform:'Platform', name:'Name', username:'Username', picture:'Picture', selector:'Selector' };
+
+const AccountSheetRepo={
+  async list(){ const {data,error}=await supa.from('account_sheets').select('*').order('created_at',{ascending:true}); if(error)throw error; return data||[]; },
+  async add(s){ const {data,error}=await supa.from('account_sheets').insert(s).select().single(); if(error)throw error; return data; },
+  async update(id,patch){ const {error}=await supa.from('account_sheets').update(patch).eq('id',id); if(error)throw error; },
+  async remove(id){ const {error}=await supa.from('account_sheets').delete().eq('id',id); if(error)throw error; },
+};
+
+async function fetchAccounts(sheet){
+  const res=await fetch(toCsvUrl(sheet.url)); if(!res.ok)throw new Error('HTTP '+res.status);
+  const text=await res.text(); if(/<html/i.test(text.slice(0,200)))throw new Error('Sheet chưa chia sẻ công khai');
+  const rows=parseCSV(text); if(!rows.length)return[];
+  const head=rows[0].map(h=>h.trim()); const ix=n=>head.indexOf(n);
+  const iI=ix(ACCOUNT_COLS.id),iP=ix(ACCOUNT_COLS.platform),iN=ix(ACCOUNT_COLS.name),iU=ix(ACCOUNT_COLS.username),iPic=ix(ACCOUNT_COLS.picture),iS=ix(ACCOUNT_COLS.selector);
+  return rows.slice(1).map((r,idx)=>({
+    id:(iI>-1?r[iI]:'')||'', platform:(iP>-1?r[iP]:'')||'', name:(iN>-1?r[iN]:'')||'',
+    username:(iU>-1?r[iU]:'')||'', picture:(iPic>-1?r[iPic]:'')||'', selector:(iS>-1?r[iS]:'')||'',
+    _k:String((iI>-1&&r[iI])||(iS>-1&&r[iS])||('row'+idx))
+  })).filter(a=>a.name||a.selector||a.id);
+}
+
+/* ---- Trang Thêm Facebook (dòng nhập tay) ---- */
+async function renderAccSheets(){
+  try{
+    const lines=await FacebookRepo.list();
+    $('#fbListCount').textContent=lines.length;
+    $('#fbLines').innerHTML = lines.length? lines.map(l=>`
+      <div class="fbrow" data-id="${l.id}" style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--line);border-radius:9px">
+        <span class="grow" style="font-family:'Space Mono',monospace;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(l.selector)}">${esc(l.selector)||'(trống)'}</span>
+        <button class="btn btn-sm btn-danger fbdel">✕</button>
+      </div>`).join('') : '<div class="empty"><div class="big">Chưa có dòng Facebook nào</div>Dán ở khung phía trên rồi bấm Thêm.</div>';
+    $('#fbLines').querySelectorAll('.fbrow').forEach(row=>{ row.querySelector('.fbdel').onclick=async()=>{ try{ await FacebookRepo.remove(row.dataset.id); renderAccSheets(); }catch(e){ toast('Lỗi: '+e.message,'err'); } }; });
+  }catch(e){ toast('Lỗi tải danh sách Facebook: '+e.message,'err'); }
+}
+$('#fbAddBtn').onclick=async()=>{
+  const lines=$('#fbAddInput').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  if(!lines.length){ toast('Nhập ít nhất 1 dòng','warn'); return; }
+  try{ await FacebookRepo.addLines(lines); $('#fbAddInput').value=''; toast(`Đã thêm ${lines.length} dòng Facebook`,'ok'); renderAccSheets(); }
+  catch(e){ toast('Lỗi thêm: '+e.message,'err'); }
+};
+$('#fbClearAll').onclick=async()=>{ if(!confirm('Xoá toàn bộ danh sách Facebook?'))return; try{ await FacebookRepo.clearAll(); toast('Đã xoá tất cả','ok'); renderAccSheets(); }catch(e){ toast('Lỗi: '+e.message,'err'); } };
+
+/* ---- Nguồn dữ liệu Dataset: chọn nhiều Sheet ---- */
+const ACC_ROW=64;
+const dsSel=new Set();
+let dsSheetsCache=[];
+async function renderDsSources(){
+  dsSheetsCache=await DatasetSheetRepo.list();
+  // KHÔNG chọn sẵn Sheet nào — để người dùng tự tick
+  [...dsSel].forEach(id=>{ if(!dsSheetsCache.find(s=>s.id===id)) dsSel.delete(id); });
+  $('#dsSrcList').innerHTML = dsSheetsCache.length? dsSheetsCache.map(s=>`
+    <label>
+      <input type="checkbox" class="dssrcck" value="${s.id}" ${dsSel.has(s.id)?'checked':''}>
+      <span class="grow">${esc(s.name)}</span>
+      <span class="badge">${(s.product_count||0).toLocaleString('vi-VN')} sp</span>
+    </label>`).join('') : '<div class="muted" style="font-size:13px">Chưa có Sheet Dataset. Vào mục <b>Thêm Sheet Dataset</b> để thêm.</div>';
+  $('#dsSrcAll').checked = dsSheetsCache.length>0 && dsSel.size===dsSheetsCache.length;
+  $('#dsSrcList').querySelectorAll('.dssrcck').forEach(ck=>ck.onchange=async()=>{ if(ck.checked)dsSel.add(ck.value); else dsSel.delete(ck.value); $('#dsSrcAll').checked = dsSel.size===dsSheetsCache.length && dsSheetsCache.length>0; await onDsSourcesChanged(); });
+  updateDsSrcLabel();
+}
+function updateDsSrcLabel(){
+  const el=$('#dsSrcLabel'); if(!el) return;
+  const total=dsSheetsCache.length, sel=dsSel.size;
+  if(!total){ el.textContent='Chưa có Sheet'; return; }
+  if(sel===0){ el.textContent='— Chọn Sheet —'; return; }
+  if(sel===total){ el.textContent=`Tất cả Sheet (${total})`; return; }
+  el.textContent = dsSheetsCache.filter(s=>dsSel.has(s.id)).map(s=>s.name).join(', ') || `Đã chọn ${sel}/${total} Sheet`;
+}
+/* Dropdown thu gọn: bấm thanh để xổ ra/đóng; bấm ra ngoài thì đóng */
+function bindDropsel(){ document.querySelectorAll('.dropsel-bar').forEach(bar=>{ bar.onclick=e=>{ e.stopPropagation(); const d=bar.closest('.dropsel'); const open=d.classList.contains('open'); document.querySelectorAll('.dropsel.open').forEach(x=>x.classList.remove('open')); if(!open) d.classList.add('open'); }; }); }
+document.addEventListener('click', e=>{ if(!e.target.closest('.dropsel')) document.querySelectorAll('.dropsel.open').forEach(d=>d.classList.remove('open')); });
+$('#dsSrcAll').onchange=async()=>{ dsSel.clear(); if($('#dsSrcAll').checked) dsSheetsCache.forEach(s=>dsSel.add(s.id)); $('#dsSrcList').querySelectorAll('.dssrcck').forEach(ck=>ck.checked=dsSel.has(ck.value)); await onDsSourcesChanged(); };
+$('#dsOnlyContent').onchange=async()=>{ await onDsSourcesChanged(); };
+function refreshDsCatOptions(){ document.querySelectorAll('.dscfg').forEach(r=>{ const sel=r.querySelector('.dscat'); const cur=sel.value; sel.innerHTML='<option value="">— Chọn danh mục —</option>'+dsCats.map(c=>`<option value="${esc(c)}" ${c===cur?'selected':''}>${esc(c)}</option>`).join(''); }); }
+async function onDsSourcesChanged(){ updateDsSrcLabel(); await loadDsCats(); refreshDsCatOptions(); document.querySelectorAll('.dscfg').forEach(r=>{ const s=r.querySelector('.dscat'); const av=r.querySelector('.dsavail'); if(s.value && s.onchange) s.onchange(); else if(av) av.textContent='hiện có: —'; }); recalcDsSummary(); }
+
+/* ---- Chọn 1 Facebook ---- */
+async function loadDsFb(){
+  try{ const lines=await FacebookRepo.list();
+    $('#dsFbList').innerHTML = lines.length? lines.map(l=>`
+      <label>
+        <input type="checkbox" class="dsfbck" value="${esc(l.selector)}">
+        <span class="grow" style="font-family:'Space Mono',monospace;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(l.selector)}">${esc(l.selector)||'(trống)'}</span>
+      </label>`).join('') : '<div class="muted" style="font-size:13px">Chưa có Facebook. Vào mục <b>Thêm Facebook</b> để thêm các dòng.</div>';
+    $('#dsFbList').querySelectorAll('.dsfbck').forEach(ck=>ck.onchange=updateDsFbMeta);
+    updateDsFbMeta();
+  }catch(e){ $('#dsFbList').innerHTML='<div class="muted" style="font-size:13px">Lỗi tải Facebook: '+esc(e.message)+'</div>'; }
+}
+function selectedFbLines(){ return [...document.querySelectorAll('.dsfbck:checked')].map(c=>c.value).filter(Boolean); }
+function updateDsFbMeta(){ const n=selectedFbLines().length, t=document.querySelectorAll('.dsfbck').length; const el=$('#dsFbMeta'); if(el) el.textContent=`${n}/${t} dòng`; const lb=$('#dsFbLabel'); if(lb) lb.textContent = !t?'Chưa có Facebook':(n===0?'— Chọn Facebook —':(n===t?`Tất cả Facebook (${t})`:`Đã chọn ${n}/${t} Facebook`)); }
+$('#dsFbAll').onclick=()=>{ document.querySelectorAll('.dsfbck').forEach(c=>c.checked=true); updateDsFbMeta(); };
+$('#dsFbNone').onclick=()=>{ document.querySelectorAll('.dsfbck').forEach(c=>c.checked=false); updateDsFbMeta(); };
+async function initDsExtras(){ await renderDsSources(); await loadDsFb(); bindDropsel(); }
+/* Ô tìm Facebook: gõ tên để lọc danh sách (vd "Yến Nam") */
+function filterDsFb(kw){ const k=noDiacritics(String(kw||'')).toLowerCase().trim(); document.querySelectorAll('#dsFbList label').forEach(lb=>{ const txt=noDiacritics(lb.textContent||'').toLowerCase(); lb.style.display=(!k||txt.includes(k))?'':'none'; }); }
+$('#dsFbSearch').addEventListener('focus', ()=>{ document.querySelectorAll('.dropsel.open').forEach(d=>d.classList.remove('open')); $('#dsFbDrop').classList.add('open'); });
+$('#dsFbSearch').addEventListener('click', e=>{ e.stopPropagation(); $('#dsFbDrop').classList.add('open'); });
+$('#dsFbSearch').addEventListener('input', e=>{ $('#dsFbDrop').classList.add('open'); filterDsFb(e.target.value); });
+
+/* ============================================================
+   8) KHỞI ĐỘNG
+   ============================================================ */
+initClient(); fillSettings(); setConnLocked(true); setupAuto();
+go(supa? 'dashboard':'settings');
+</script>
+</body>
+</html>
